@@ -245,7 +245,8 @@ ifeq ($(CONFIG_OF_EMBED),y)
 LIBS += dts/libdts.o
 endif
 LIBS += arch/$(ARCH)/lib/lib$(ARCH).o
-LIBS += fs/cramfs/libcramfs.o \
+LIBS += fs/cbfs/libcbfs.o \
+	fs/cramfs/libcramfs.o \
 	fs/ext4/libext4fs.o \
 	fs/fat/libfat.o \
 	fs/fdos/libfdos.o \
