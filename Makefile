@@ -245,7 +245,8 @@ ifeq ($(CONFIG_OF_EMBED),y)
 LIBS += dts/libdts.o
 endif
 LIBS += arch/$(ARCH)/lib/lib$(ARCH).o
-LIBS += fs/cbfs/libcbfs.o \
+LIBS += fs/libfs.o \
+	fs/cbfs/libcbfs.o \
 	fs/cramfs/libcramfs.o \
 	fs/ext4/libext4fs.o \
 	fs/fat/libfat.o \
@@ -261,6 +262,9 @@ LIBS += drivers/bios_emulator/libatibiosemu.o
 LIBS += drivers/block/libblock.o
 LIBS += drivers/dma/libdma.o
 LIBS += drivers/fpga/libfpga.o
+ifeq ($(CONFIG_CMD_FS_GENERIC),y)
+LIBS += cmd_fs.o
+endif
 LIBS += drivers/gpio/libgpio.o
 LIBS += drivers/hwmon/libhwmon.o
 LIBS += drivers/i2c/libi2c.o
