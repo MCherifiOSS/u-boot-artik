@@ -60,5 +60,6 @@ void set_mmc_clk(int dev_index, unsigned int div);
 unsigned long get_lcd_clk(void);
 void set_lcd_clk(void);
 void set_mipi_clk(void);
+int set_spi_clk(int periph_id, unsigned int rate);
 
 #endif
