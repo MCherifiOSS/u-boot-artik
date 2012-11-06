@@ -192,8 +192,8 @@ void usb_display_desc(struct usb_device *dev)
 
 }
 
-void usb_display_conf_desc(struct usb_configuration_descriptor *config,
-			   struct usb_device *dev)
+static void usb_display_conf_desc(struct usb_config_descriptor *config,
+				  struct usb_device *dev)
 {
 	printf("   Configuration: %d\n", config->bConfigurationValue);
 	printf("   - Interfaces: %d %s%s%dmA\n", config->bNumInterfaces,
