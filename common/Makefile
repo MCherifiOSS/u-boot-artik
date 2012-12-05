@@ -105,6 +105,7 @@ endif
 COBJS-$(CONFIG_CMD_FS_GENERIC) += cmd_fs.o
 COBJS-$(CONFIG_CMD_GPIO) += cmd_gpio.o
 COBJS-$(CONFIG_CMD_I2C) += cmd_i2c.o
+COBJS-$(CONFIG_CMD_HASH) += cmd_hash.o
 COBJS-$(CONFIG_CMD_IDE) += cmd_ide.o
 COBJS-$(CONFIG_CMD_IMMAP) += cmd_immap.o
 COBJS-$(CONFIG_CMD_IRQ) += cmd_irq.o
