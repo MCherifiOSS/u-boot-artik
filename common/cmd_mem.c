@@ -682,10 +682,8 @@ static ulong mem_test_alt(vu_long *start, vu_long *end)
 					"expected %08lx, actual %08lx\n",
 						val, readback);
 				errs++;
-				if (ctrlc()) {
-					putc('\n');
+				if (ctrlc())
 					return -1;
-				}
 			}
 			*addr  = ~val;
 			*dummy  = val;
@@ -695,10 +693,8 @@ static ulong mem_test_alt(vu_long *start, vu_long *end)
 					"Is %08lx, should be %08lx\n",
 						readback, ~val);
 				errs++;
-				if (ctrlc()) {
-					putc('\n');
+				if (ctrlc())
 					return -1;
-				}
 			}
 		}
 	}
@@ -763,10 +759,8 @@ static ulong mem_test_alt(vu_long *start, vu_long *end)
 				" expected 0x%.8lx, actual 0x%.8lx\n",
 				(ulong)&start[offset], pattern, temp);
 			errs++;
-			if (ctrlc()) {
-				putc('\n');
+			if (ctrlc())
 				return -1;
-			}
 		}
 	}
 	start[test_offset] = pattern;
@@ -786,10 +780,8 @@ static ulong mem_test_alt(vu_long *start, vu_long *end)
 					" actual 0x%.8lx\n",
 					(ulong)&start[offset], pattern, temp);
 				errs++;
-				if (ctrlc()) {
-					putc('\n');
+				if (ctrlc())
 					return -1;
-				}
 			}
 		}
 		start[test_offset] = pattern;
@@ -828,10 +820,8 @@ static ulong mem_test_alt(vu_long *start, vu_long *end)
 				" expected 0x%.8lx, actual 0x%.8lx)\n",
 				(ulong)&start[offset], pattern, temp);
 			errs++;
-			if (ctrlc()) {
-				putc('\n');
+			if (ctrlc())
 				return -1;
-			}
 		}
 
 		anti_pattern = ~pattern;
@@ -850,10 +840,8 @@ static ulong mem_test_alt(vu_long *start, vu_long *end)
 				" expected 0x%.8lx, actual 0x%.8lx)\n",
 				(ulong)&start[offset], anti_pattern, temp);
 			errs++;
-			if (ctrlc()) {
-				putc('\n');
+			if (ctrlc())
 				return -1;
-			}
 		}
 		start[offset] = 0;
 	}
@@ -905,10 +893,8 @@ static ulong mem_test_quick(vu_long *start, vu_long *end, vu_long pattern,
 				"found %08lX, expected %08lX\n",
 				(uint)(uintptr_t)addr, readback, val);
 			errs++;
-			if (ctrlc()) {
-				putc('\n');
+			if (ctrlc())
 				return -1;
-			}
 		}
 		val += incr;
 	}
@@ -965,7 +951,6 @@ static int do_mem_mtest(cmd_tbl_t *cmdtp, int flag, int argc,
 			!iteration_limit || iteration < iteration_limit;
 			iteration++) {
 		if (ctrlc()) {
-			putc('\n');
 			errs = -1UL;
 			break;
 		}
@@ -979,7 +964,8 @@ static int do_mem_mtest(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 
 	if (errs == -1UL) {
-		/* Memory test was aborted */
+		/* Memory test was aborted - write a newline to finish off */
+		putc('\n');
 		ret = 1;
 	} else {
 		printf("Tested %d iteration(s) with %lu errors.\n",
