@@ -908,6 +908,7 @@ static ulong mem_test_quick(vu_long *buf, ulong start_addr, ulong end_addr,
 	return 0;
 }
 
+#ifdef CONFIG_CMD_MEMTEST
 /*
  * Perform a memory test. A more complete alternative test can be
  * configured using CONFIG_SYS_ALT_MEMTEST. The complete test loops until
@@ -1000,7 +1001,7 @@ static int do_mem_mtest(cmd_tbl_t *cmdtp, int flag, int argc,
 
 	return ret;	/* not reached */
 }
-
+#endif	/* CONFIG_CMD_MEMTEST */
 
 /* Modify memory.
  *
@@ -1238,11 +1239,13 @@ U_BOOT_CMD(
 );
 #endif /* CONFIG_LOOPW */
 
+#ifdef CONFIG_CMD_MEMTEST
 U_BOOT_CMD(
 	mtest,	5,	1,	do_mem_mtest,
 	"simple RAM read/write test",
 	"[start [end [pattern [iterations]]]]"
 );
+#endif	/* CONFIG_CMD_MEMTEST */
 
 #ifdef CONFIG_MX_CYCLIC
 U_BOOT_CMD(
