@@ -97,7 +97,7 @@ void scsi_scan(int mode)
 		scsi_dev_desc[i].vendor[0]=0;
 		scsi_dev_desc[i].product[0]=0;
 		scsi_dev_desc[i].revision[0]=0;
-		scsi_dev_desc[i].removable=FALSE;
+		scsi_dev_desc[i].removable = false;
 		scsi_dev_desc[i].if_type=IF_TYPE_SCSI;
 		scsi_dev_desc[i].dev=i;
 		scsi_dev_desc[i].part_type=PART_TYPE_UNKNOWN;
@@ -111,7 +111,7 @@ void scsi_scan(int mode)
 			pccb->pdata=(unsigned char *)&tempbuff;
 			pccb->datalen=512;
 			scsi_setup_inquiry(pccb);
-			if(scsi_exec(pccb)!=TRUE) {
+			if (scsi_exec(pccb) != true) {
 				if(pccb->contr_stat==SCSI_SEL_TIME_OUT) {
 					debug ("Selection timeout ID %d\n",pccb->target);
 					continue; /* selection timeout => assuming no device present */
@@ -125,7 +125,7 @@ void scsi_scan(int mode)
 				continue; /* skip unknown devices */
 			}
 			if((modi&0x80)==0x80) /* drive is removable */
-				scsi_dev_desc[scsi_max_devs].removable=TRUE;
+				scsi_dev_desc[scsi_max_devs].removable=true;
 			/* get info for this device */
 			scsi_ident_cpy((unsigned char *)&scsi_dev_desc[scsi_max_devs].vendor[0],
 				       &tempbuff[8], 8);
@@ -138,8 +138,8 @@ void scsi_scan(int mode)
 
 			pccb->datalen=0;
 			scsi_setup_test_unit_ready(pccb);
-			if(scsi_exec(pccb)!=TRUE) {
-				if(scsi_dev_desc[scsi_max_devs].removable==TRUE) {
+			if (scsi_exec(pccb) != true) {
+				if (scsi_dev_desc[scsi_max_devs].removable == true) {
 					scsi_dev_desc[scsi_max_devs].type=perq;
 					goto removable;
 				}
@@ -148,7 +148,7 @@ void scsi_scan(int mode)
 			}
 			pccb->datalen=8;
 			scsi_setup_read_capacity(pccb);
-			if(scsi_exec(pccb)!=TRUE) {
+			if(scsi_exec(pccb)!=true) {
 				scsi_print_error(pccb);
 				continue;
 			}
@@ -347,7 +347,7 @@ ulong scsi_read(int device, ulong blknr, ulong blkcnt, void *buffer)
 			blks=0;
 		}
 		debug ("scsi_read_ext: startblk %lx, blccnt %x buffer %lx\n",start,smallblks,buf_addr);
-		if(scsi_exec(pccb)!=TRUE) {
+		if(scsi_exec(pccb)!=true) {
 			scsi_print_error(pccb);
 			blkcnt-=blks;
 			break;
@@ -397,7 +397,6 @@ void scsi_trim_trail (unsigned char *str, unsigned int len)
 		}
 	}
 }
-
 
 /************************************************************************************
  * Some setup (fill-in) routines
