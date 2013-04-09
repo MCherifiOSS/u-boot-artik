@@ -1457,6 +1457,7 @@ int mmc_startup(struct mmc *mmc)
 	mmc->block_dev.lun = 0;
 	mmc->block_dev.type = 0;
 	mmc->block_dev.blksz = mmc->read_bl_len;
+	mmc->block_dev.log2blksz = LOG2(mmc->block_dev.blksz);
 	mmc->block_dev.lba = lldiv(mmc->capacity, mmc->read_bl_len);
 	sprintf(mmc->block_dev.vendor, "Man %06x Snr %08x", mmc->cid[0] >> 8,
 			(mmc->cid[2] << 8) | (mmc->cid[3] >> 24));
