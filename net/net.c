@@ -256,7 +256,8 @@ static void NetInitLoop(void)
 #endif
 		env_changed_id = env_id;
 	}
-	memcpy(NetOurEther, eth_get_dev()->enetaddr, 6);
+	if (eth_get_dev())
+		memcpy(NetOurEther, eth_get_dev()->enetaddr, 6);
 
 	return;
 }
