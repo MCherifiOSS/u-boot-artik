@@ -31,8 +31,8 @@ static int do_dfu(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	const char *str_env;
 	char *s = "dfu";
+	int ret, i = 0;
 	char *env_bkp;
-	int ret;
 
 	if (argc < 3)
 		return CMD_RET_USAGE;
@@ -61,6 +61,15 @@ static int do_dfu(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	g_dnl_register(s);
 	while (1) {
+		if (dfu_reset())
+			/*
+			 * This extra number of usb_gadget_handle_interrupts()
+			 * calls is necessary to assure correct transmission
+			 * completion with dfu-util
+			 */
+			if (++i == 10)
+				goto exit;
+
 		if (ctrlc())
 			goto exit;
 
@@ -71,6 +80,9 @@ exit:
 done:
 	dfu_free_entities();
 	free(env_bkp);
+
+	if (dfu_reset())
+		run_command("reset", 0);
 
 	return CMD_RET_SUCCESS;
 }
