@@ -59,6 +59,8 @@ struct nand_internal_data {
 
 	unsigned int dev;
 	unsigned int part;
+	/* for nand/ubi use */
+	unsigned int ubi;
 };
 
 static inline unsigned int get_mmc_blk_size(int dev)
