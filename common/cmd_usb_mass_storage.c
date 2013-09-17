@@ -18,7 +18,6 @@
  * MA 02111-1307 USA
  */
 
-#include <errno.h>
 #include <common.h>
 #include <command.h>
 #include <g_dnl.h>
