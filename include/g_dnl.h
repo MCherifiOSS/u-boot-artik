@@ -28,6 +28,4 @@ int g_dnl_register(const char *s);
 void g_dnl_unregister(void);
 void g_dnl_set_serialnumber(char *);
 
-/* USB initialization declaration - board specific */
-void board_usb_init(void);
 #endif /* __G_DOWNLOAD_H_ */
