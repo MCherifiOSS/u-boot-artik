@@ -173,6 +173,7 @@ COBJS-$(CONFIG_EXYNOS_USBD3) += cmd_usbd3.o
 COBJS-$(CONFIG_FASTBOOT) += cmd_fastboot.o
 COBJS-$(CONFIG_FASTBOOT) += decompress_ext4.o
 COBJS-$(CONFIG_CMD_USB_MASS_STORAGE) += cmd_usb_mass_storage.o
+COBJS-$(CONFIG_CMD_THOR_DOWNLOAD) += cmd_thordown.o
 COBJS-$(CONFIG_CMD_XIMG) += cmd_ximg.o
 COBJS-$(CONFIG_YAFFS2) += cmd_yaffs2.o
 COBJS-$(CONFIG_CMD_SPL) += cmd_spl.o
