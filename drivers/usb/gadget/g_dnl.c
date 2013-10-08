@@ -138,7 +138,7 @@ static int g_dnl_config_register(struct usb_composite_dev *cdev)
 }
 
 __weak
-int g_dnl_bind_fixup(struct usb_device_descriptor *dev)
+int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 {
 	return 0;
 }
@@ -165,7 +165,7 @@ static int g_dnl_bind(struct usb_composite_dev *cdev)
 	g_dnl_string_defs[1].id = id;
 	device_desc.iProduct = id;
 
-	g_dnl_bind_fixup(&device_desc);
+	g_dnl_bind_fixup(&device_desc, cdev->driver->name);
 	ret = g_dnl_config_register(cdev);
 	if (ret)
 		goto error;
