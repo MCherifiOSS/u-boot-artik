@@ -273,6 +273,7 @@
 #include <config.h>
 #include <malloc.h>
 #include <common.h>
+#include <usb.h>
 
 #include <linux/err.h>
 #include <linux/usb/ch9.h>
@@ -704,6 +705,18 @@ static int sleep_thread(struct fsg_common *common)
 			busy_indicator();
 			i = 0;
 			k++;
+		}
+
+		if (k == 10) {
+			/* Handle CTRL+C */
+			if (ctrlc())
+				return -EPIPE;
+#ifdef CONFIG_USB_CABLE_CHECK
+			/* Check cable connection */
+			if (!usb_cable_connected())
+				return -EIO;
+#endif
+			k = 0;
 		}
 
 		usb_gadget_handle_interrupts();
@@ -2418,6 +2431,7 @@ static void handle_exception(struct fsg_common *common)
 
 int fsg_main_thread(void *common_)
 {
+	int ret;
 	struct fsg_common	*common = the_fsg_common;
 	/* The main loop */
 	do {
@@ -2427,12 +2441,16 @@ int fsg_main_thread(void *common_)
 		}
 
 		if (!common->running) {
-			sleep_thread(common);
+			ret = sleep_thread(common);
+			if (ret)
+				return ret;
+
 			continue;
 		}
 
-		if (get_next_command(common))
-			continue;
+		ret = get_next_command(common);
+		if (ret)
+			return ret;
 
 		if (!exception_in_progress(common))
 			common->state = FSG_STATE_DATA_PHASE;
