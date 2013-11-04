@@ -45,6 +45,9 @@
 #define STRING_PRODUCT 2
 /* Index of String Descriptor describing this configuration */
 #define STRING_USBDOWN 2
+/* Index of String serial */
+#define STRING_SERIAL  3
+#define MAX_STRING_SERIAL	32
 /* Number of supported configurations */
 #define CONFIGURATION_NUMBER 1
 
@@ -52,7 +55,15 @@
 
 static const char shortname[] = "usb_dnl_";
 static const char product[] = "USB download gadget";
+static char g_dnl_serial[MAX_STRING_SERIAL];
 static const char manufacturer[] = CONFIG_G_DNL_MANUFACTURER;
+
+void g_dnl_set_serialnumber(char *s)
+{
+	memset(g_dnl_serial, 0, MAX_STRING_SERIAL);
+	if (strlen(s) < MAX_STRING_SERIAL)
+		strncpy(g_dnl_serial, s, strlen(s));
+}
 
 static struct usb_device_descriptor device_desc = {
 	.bLength = sizeof device_desc,
@@ -65,6 +76,7 @@ static struct usb_device_descriptor device_desc = {
 	.idVendor = __constant_cpu_to_le16(CONFIG_G_DNL_VENDOR_NUM),
 	.idProduct = __constant_cpu_to_le16(CONFIG_G_DNL_PRODUCT_NUM),
 	.iProduct = STRING_PRODUCT,
+	.iSerialNumber = STRING_SERIAL,
 	.bNumConfigurations = 1,
 };
 
@@ -75,6 +87,7 @@ static struct usb_device_descriptor device_desc = {
 static struct usb_string g_dnl_string_defs[] = {
 	{.s = manufacturer},
 	{.s = product},
+	{.s = g_dnl_serial},
 	{ }		/* end of list */
 };
 
@@ -167,6 +180,13 @@ static int g_dnl_bind(struct usb_composite_dev *cdev)
 
 	g_dnl_string_defs[1].id = id;
 	device_desc.iProduct = id;
+
+	id = usb_string_id(cdev);
+	if (id < 0)
+		return id;
+
+	g_dnl_string_defs[2].id = id;
+	device_desc.iSerialNumber = id;
 
 	g_dnl_bind_fixup(&device_desc, cdev->driver->name);
 	ret = g_dnl_config_register(cdev);
