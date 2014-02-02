@@ -58,6 +58,9 @@ COBJS-$(CONFIG_USB_EHCI_VCT) += ehci-vct.o
 # xhci
 COBJS-$(CONFIG_USB_XHCI) += xhci.o xhci-mem.o xhci-ring.o
 
+# designware
+COBJS-$(CONFIG_USB_DWC2) += dwc2.o
+
 COBJS	:= $(COBJS-y)
 SRCS	:= $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
