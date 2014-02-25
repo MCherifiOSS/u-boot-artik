@@ -35,9 +35,12 @@ PLATFORM_CPPFLAGS += $(PF_CPPFLAGS_ARMV7)
 PF_RELFLAGS_SLB_AT := $(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
 PLATFORM_RELFLAGS += $(PF_RELFLAGS_SLB_AT)
 
-# SEE README.arm-unaligned-accesses
+# On supported platforms we set the bit which causes us to trap on unaligned
+# memory access.  This is the opposite of what the compiler expects to be
+# the default so we must pass in -mno-unaligned-access so that it is aware
+# of our decision.
 PF_NO_UNALIGNED := $(call cc-option, -mno-unaligned-access,)
-PLATFORM_NO_UNALIGNED := $(PF_NO_UNALIGNED)
+PLATFORM_CPPFLAGS += $(PF_NO_UNALIGNED)
 
 ifneq ($(CONFIG_IMX_CONFIG),)
 ALL-y	+= $(obj)u-boot.imx
