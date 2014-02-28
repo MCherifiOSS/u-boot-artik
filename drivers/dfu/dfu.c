@@ -31,6 +31,7 @@
 static bool dfu_reset_request;
 static LIST_HEAD(dfu_list);
 static int dfu_alt_num;
+static int alt_num_cnt;
 
 bool dfu_reset(void)
 {
@@ -389,6 +390,8 @@ void dfu_free_entities(void)
 	if (t)
 		free(t);
 	INIT_LIST_HEAD(&dfu_list);
+
+	alt_num_cnt = 0;
 }
 
 int dfu_config_entities(char *env, char *interface, int num)
@@ -406,11 +409,12 @@ int dfu_config_entities(char *env, char *interface, int num)
 	for (i = 0; i < dfu_alt_num; i++) {
 
 		s = strsep(&env, ";");
-		ret = dfu_fill_entity(&dfu[i], s, i, interface, num);
+		ret = dfu_fill_entity(&dfu[i], s, alt_num_cnt, interface, num);
 		if (ret)
 			return -1;
 
 		list_add_tail(&dfu[i].list, &dfu_list);
+		alt_num_cnt++;
 	}
 
 	return 0;
