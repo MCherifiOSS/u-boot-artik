@@ -20,6 +20,7 @@
  * MA 02111-1307 USA
  */
 
+#include <common.h>
 #include <linux/ctype.h>
 #include <errno.h>
 #include <common.h>
@@ -187,7 +188,7 @@ void uuid_bin_to_str(unsigned char *uuid_bin, char *uuid_str, int str_format)
  *
  * @param uuid_bin - pointer to allocated array [16B]. Output is in big endian.
 */
-#ifdef CONFIG_RANDOM_UUID
+#if defined(CONFIG_RANDOM_UUID) || defined(CONFIG_CMD_UUID)
 void gen_rand_uuid(unsigned char *uuid_bin)
 {
 	struct uuid uuid;
@@ -226,4 +227,45 @@ void gen_rand_uuid_str(char *uuid_str, int str_format)
 	/* Convert UUID bin to UUID or GUID formated STRING  */
 	uuid_bin_to_str(uuid_bin, uuid_str, str_format);
 }
+
+#ifdef CONFIG_CMD_UUID
+int do_uuid(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	char uuid[UUID_STR_LEN + 1];
+	int str_format;
+
+	if (!strcmp(argv[0], "uuid"))
+		str_format = UUID_STR_FORMAT_STD;
+	else
+		str_format = UUID_STR_FORMAT_GUID;
+
+	if (argc > 2)
+		return CMD_RET_USAGE;
+
+	gen_rand_uuid_str(uuid, str_format);
+
+	if (argc == 1)
+		printf("%s\n", uuid);
+	else
+		setenv(argv[1], uuid);
+
+	return CMD_RET_SUCCESS;
+}
+
+U_BOOT_CMD(uuid, CONFIG_SYS_MAXARGS, 1, do_uuid,
+	   "UUID - generate random Universally Unique Identifier",
+	   "[<varname>]\n"
+	   "Argument:\n"
+	   "varname: for set result in a environment variable\n"
+	   "e.g. uuid uuid_env"
+);
+
+U_BOOT_CMD(guid, CONFIG_SYS_MAXARGS, 1, do_uuid,
+	   "GUID - generate Globally Unique Identifier based on random UUID",
+	   "[<varname>]\n"
+	   "Argument:\n"
+	   "varname: for set result in a environment variable\n"
+	   "e.g. guid guid_env"
+);
+#endif
 #endif
