@@ -65,6 +65,7 @@ COBJS-y += div64.o
 COBJS-y += string.o
 COBJS-y += time.o
 COBJS-$(CONFIG_BOOTP_PXE) += uuid.o
+COBJS-$(CONFIG_PARTITION_UUIDS) += uuid.o
 COBJS-y += vsprintf.o
 COBJS-$(CONFIG_RANDOM_MACADDR) += rand.o
 COBJS-$(CONFIG_BOOTP_RANDOM_DELAY) += rand.o
