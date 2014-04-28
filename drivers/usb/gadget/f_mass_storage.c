@@ -285,6 +285,7 @@
 #include <linux/usb/gadget.h>
 #include <linux/usb/composite.h>
 #include <usb/lin_gadget_compat.h>
+#include <g_dnl.h>
 
 /*------------------------------------------------------------------------*/
 
@@ -2811,3 +2812,5 @@ int fsg_init(struct ums *ums_dev)
 
 	return 0;
 }
+
+DECLARE_GADGET_BIND_CALLBACK(usb_dnl_ums, fsg_add);
