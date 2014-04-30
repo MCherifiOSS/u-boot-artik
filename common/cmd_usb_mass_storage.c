@@ -55,6 +55,34 @@ int do_usb_mass_storage(cmd_tbl_t *cmdtp, int flag,
 
 	g_dnl_register("ums");
 
+	/* Timeout unit: seconds */
+	int cable_ready_timeout = UMS_CABLE_READY_TIMEOUT;
+
+	if (!g_dnl_board_usb_cable_connected()) {
+		/*
+		 * Won't execute if we don't know whether the cable is
+		 * connected.
+		 */
+		puts("Please connect USB cable.\n");
+
+		while (!g_dnl_board_usb_cable_connected()) {
+			if (ctrlc()) {
+				puts("\rCTRL+C - Operation aborted.\n");
+				goto exit;
+			}
+			if (!cable_ready_timeout) {
+				puts("\rUSB cable not detected.\n" \
+				     "Command exit.\n");
+				goto exit;
+			}
+
+			printf("\rAuto exit in: %.2d s.", cable_ready_timeout);
+			mdelay(1000);
+			cable_ready_timeout--;
+		}
+		puts("\r\n");
+	}
+
 	while (1) {
 		usb_gadget_handle_interrupts();
 
