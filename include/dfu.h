@@ -55,6 +55,9 @@ struct mmc_internal_data {
 	unsigned int lba_size;
 	unsigned int lba_blk_size;
 
+	/* eMMC HW partition access */
+	int hw_partition;
+
 	/* FAT/EXT */
 	unsigned int dev;
 	unsigned int part;
