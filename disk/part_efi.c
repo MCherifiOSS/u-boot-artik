@@ -295,7 +295,7 @@ int write_gpt_table(block_dev_desc_t *dev_desc,
 	gpt_h->header_crc32 = cpu_to_le32(calc_crc32);
 
 	if (dev_desc->block_write(dev_desc->dev,
-				  le32_to_cpu(gpt_h->last_usable_lba + 1),
+				  le32_to_cpu(gpt_h->last_usable_lba) + 1,
 				  pte_blk_cnt, gpt_e) != pte_blk_cnt)
 		goto err;
 
@@ -316,6 +316,7 @@ int gpt_fill_pte(gpt_header *gpt_h, gpt_entry *gpt_e,
 {
 	u32 offset = (u32)le32_to_cpu(gpt_h->first_usable_lba);
 	ulong start;
+	u32 last_usable_lba = (u32)le32_to_cpu(gpt_h->last_usable_lba);
 	int i, k;
 	size_t efiname_len, dosname_len;
 #ifdef CONFIG_PARTITION_UUIDS
@@ -337,7 +338,7 @@ int gpt_fill_pte(gpt_header *gpt_h, gpt_entry *gpt_e,
 			gpt_e[i].starting_lba = cpu_to_le64(offset);
 			offset += partitions[i].size;
 		}
-		if (offset >= gpt_h->last_usable_lba) {
+		if (offset >= last_usable_lba) {
 			printf("Partitions layout exceds disk size\n");
 			return -1;
 		}
