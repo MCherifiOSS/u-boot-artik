@@ -121,6 +121,8 @@ struct dfu_entity {
 
 	int (*flush_medium)(struct dfu_entity *dfu);
 
+	void (*free_entity)(struct dfu_entity *dfu);
+
 	struct list_head list;
 
 	/* on the fly state */
