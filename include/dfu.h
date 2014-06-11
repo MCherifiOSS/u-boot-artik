@@ -26,6 +26,7 @@
 #include <common.h>
 #include <linux/list.h>
 #include <mmc.h>
+#include <spi_flash.h>
 #include <linux/usb/composite.h>
 
 enum dfu_device_type {
@@ -33,6 +34,7 @@ enum dfu_device_type {
 	DFU_DEV_ONENAND,
 	DFU_DEV_NAND,
 	DFU_DEV_RAM,
+	DFU_DEV_SF,
 };
 
 enum dfu_layout {
@@ -82,6 +84,14 @@ struct ram_internal_data {
 	unsigned int	size;
 };
 
+struct sf_internal_data {
+	struct spi_flash *dev;
+
+	/* RAW programming */
+	u64 start;
+	u64 size;
+};
+
 #define DFU_NAME_SIZE			32
 #define DFU_CMD_BUF_SIZE		128
 #ifndef CONFIG_SYS_DFU_DATA_BUF_SIZE
@@ -109,6 +119,7 @@ struct dfu_entity {
 		struct mmc_internal_data mmc;
 		struct nand_internal_data nand;
 		struct ram_internal_data ram;
+		struct sf_internal_data sf;
 	} data;
 
 	long (*get_medium_size)(struct dfu_entity *dfu);
@@ -189,6 +200,17 @@ static inline int dfu_fill_entity_ram(struct dfu_entity *dfu, char *devstr,
 				      char *s)
 {
 	puts("RAM support not available!\n");
+	return -1;
+}
+#endif
+
+#ifdef CONFIG_DFU_SF
+extern int dfu_fill_entity_sf(struct dfu_entity *dfu, char *devstr, char *s);
+#else
+static inline int dfu_fill_entity_sf(struct dfu_entity *dfu, char *devstr,
+				     char *s)
+{
+	puts("SF support not available!\n");
 	return -1;
 }
 #endif
