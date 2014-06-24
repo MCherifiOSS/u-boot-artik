@@ -63,6 +63,7 @@ COBJS-y += crc32.o
 COBJS-y += ctype.o
 COBJS-y += div64.o
 COBJS-y += string.o
+COBJS-y += linux_compat.o
 COBJS-y += time.o
 COBJS-$(CONFIG_LIB_UUID) += uuid.o
 COBJS-y += vsprintf.o
