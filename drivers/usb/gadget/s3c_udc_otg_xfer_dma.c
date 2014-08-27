@@ -496,7 +496,7 @@ static int s3c_udc_irq(int irq, void *_dev)
 	struct s3c_udc *dev = _dev;
 	u32 intr_status;
 	u32 usb_status, gintmsk;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	spin_lock_irqsave(&dev->lock, flags);
 
@@ -615,7 +615,7 @@ static int s3c_queue(struct usb_ep *_ep, struct usb_request *_req,
 	struct s3c_request *req;
 	struct s3c_ep *ep;
 	struct s3c_udc *dev;
-	unsigned long flags;
+	unsigned long flags = 0;
 	u32 ep_num, gintsts;
 
 	req = container_of(_req, struct s3c_request, req);
@@ -1063,7 +1063,7 @@ static int s3c_udc_set_halt(struct usb_ep *_ep, int value)
 {
 	struct s3c_ep	*ep;
 	struct s3c_udc	*dev;
-	unsigned long	flags;
+	unsigned long	flags = 0;
 	u8		ep_num;
 
 	ep = container_of(_ep, struct s3c_ep, ep);
