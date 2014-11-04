@@ -121,5 +121,6 @@ struct s3c_plat_otg_data {
 	unsigned int	regs_otg;
 	unsigned int    usb_phy_ctrl;
 	unsigned int    usb_flags;
+	unsigned int	usb_gusbcfg;
 };
 #endif
