@@ -167,6 +167,7 @@ int do_usb_mass_storage(cmd_tbl_t *cmdtp, int flag,
 	}
 exit:
 	g_dnl_unregister();
+	board_usb_cleanup(controller_index, USB_INIT_DEVICE);
 	return CMD_RET_SUCCESS;
 }
 
