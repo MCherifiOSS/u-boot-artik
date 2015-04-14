@@ -21,6 +21,7 @@
  */
 
 #include <common.h>
+#include <watchdog.h>
 #include <dfu.h>
 #include <g_dnl.h>
 #include <usb.h>
@@ -76,6 +77,7 @@ static int do_dfu(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (ctrlc())
 			goto exit;
 
+		WATCHDOG_RESET();
 		usb_gadget_handle_interrupts(controller_index);
 	}
 exit:
