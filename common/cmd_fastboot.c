@@ -771,7 +771,8 @@ static int rx_handler (const unsigned char *buffer, unsigned int buffer_size)
 	/* Use 65 instead of 64
 	   null gets dropped
 	   strcpy's need the extra byte */
-	char response[65];
+	/* A special hardware needs 8 bytes aligned address for dma transfer */
+	char *response = (char *)memalign(8, 65);
 
 	if (download_size)
 	{
