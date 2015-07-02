@@ -63,8 +63,8 @@ static void exynos4_uart_config(int peripheral)
 
 static void exynos5_uart_config(int peripheral)
 {
-	struct exynos5412_gpio_part4 *gpio4 =
-		(struct exynos5412_gpio_part4 *) samsung_get_base_gpio_part4();
+	struct exynos5420_gpio_part4 *gpio4 =
+		(struct exynos5420_gpio_part4 *) samsung_get_base_gpio_part4();
 	struct exynos5_gpio_part1 *gpio1 =
 		(struct exynos5_gpio_part1 *) samsung_get_base_gpio_part1();
 	struct exynos5260_gpio_part3 *gpio3 =
@@ -74,7 +74,7 @@ static void exynos5_uart_config(int peripheral)
 
 	switch (peripheral) {
 	case PERIPH_ID_UART0:
-		if(s5p_cpu_id == 0x5412) {
+		if(s5p_cpu_id == 0x5420 || s5p_cpu_id == 0x5422) {
 			bank = &gpio4->a0;
 			start = 0;
 			count = 4;
@@ -93,7 +93,7 @@ static void exynos5_uart_config(int peripheral)
 			bank = &gpio1->a1;
 			start = 0;
 			count = 4;
-		} else if(s5p_cpu_id == 0x5412) {
+		} else if(s5p_cpu_id == 0x5420 || s5p_cpu_id == 0x5422) {
 			bank = &gpio4->a0;
 			start = 4;
 			count = 4;
@@ -108,7 +108,7 @@ static void exynos5_uart_config(int peripheral)
 			bank = &gpio1->a1;
 			start = 4;
 			count = 2;
-		} else if(s5p_cpu_id == 0x5412) {
+		} else if(s5p_cpu_id == 0x5420 || s5p_cpu_id == 0x5422) {
 			bank = &gpio4->a1;
 			start = 0;
 			count = 4;
@@ -123,7 +123,7 @@ static void exynos5_uart_config(int peripheral)
 			bank = &gpio3->z1;
 			start = 0;
 			count = 4;
-		} else if(s5p_cpu_id == 0x5412) {
+		} else if(s5p_cpu_id == 0x5420 || s5p_cpu_id == 0x5422) {
 			bank = &gpio4->a1;
 			start = 4;
 			count = 2;
@@ -279,10 +279,10 @@ static int exynos5_mmc_config(int peripheral, int flags)
 	return 0;
 }
 
-static int exynos5412_mmc_config(int peripheral, int flags)
+static int exynos5420_mmc_config(int peripheral, int flags)
 {
-	struct exynos5412_gpio_part2 *gpio2 =
-		(struct exynos5412_gpio_part2 *) samsung_get_base_gpio_part2();
+	struct exynos5420_gpio_part2 *gpio2 =
+		(struct exynos5420_gpio_part2 *) samsung_get_base_gpio_part2();
 	struct s5p_gpio_bank *bank, *bank_data, *bank_ext;
 	int i, bank_bit, bank_data_bit, bank_ext_bit;
 
@@ -612,8 +612,8 @@ static int exynos5_pinmux_config(int peripheral, int flags)
 			return exynos5430_mmc_config(peripheral, flags);
 		} else if (s5p_cpu_id == 0x5260) {
 			return exynos5260_mmc_config(peripheral, flags);
-		} else if (s5p_cpu_id == 0x5412) {
-			return exynos5412_mmc_config(peripheral, flags);
+		} else if (s5p_cpu_id == 0x5420 || s5p_cpu_id == 0x5422) {
+			return exynos5420_mmc_config(peripheral, flags);
 		} else {
 			return exynos5_mmc_config(peripheral, flags);
 		}

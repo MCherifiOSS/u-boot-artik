@@ -167,35 +167,35 @@ struct exynos3_gpio_part2 {
 	struct s5p_gpio_bank x3;
 };
 
-struct exynos5412_gpio_part2 {
+struct exynos5420_gpio_part2 {
 	struct s5p_gpio_bank c0;
 	struct s5p_gpio_bank c1;
 	struct s5p_gpio_bank c2;
 	struct s5p_gpio_bank c3;
 	struct s5p_gpio_bank c4;
+	struct s5p_gpio_bank d0;
 	struct s5p_gpio_bank d1;
+	struct s5p_gpio_bank y0;
+	struct s5p_gpio_bank y1;
+	struct s5p_gpio_bank y2;
+	struct s5p_gpio_bank y3;
+	struct s5p_gpio_bank y4;
+	struct s5p_gpio_bank y5;
+	struct s5p_gpio_bank y6;
 };
 
-struct exynos5412_gpio_part3 {
-	struct s5p_gpio_bank h0;
-	struct s5p_gpio_bank y7;
-	struct s5p_gpio_bank f0;
+struct exynos5420_gpio_part3 {
 	struct s5p_gpio_bank e0;
 	struct s5p_gpio_bank e1;
+	struct s5p_gpio_bank f0;
 	struct s5p_gpio_bank f1;
 	struct s5p_gpio_bank g0;
 	struct s5p_gpio_bank g1;
 	struct s5p_gpio_bank g2;
+	struct s5p_gpio_bank j4;
 };
 
-struct exynos5412_gpio_part4 {
-	struct s5p_gpio_bank y0;
-	struct s5p_gpio_bank y1;
-	struct s5p_gpio_bank y5;
-	struct s5p_gpio_bank y6;
-	struct s5p_gpio_bank y2;
-	struct s5p_gpio_bank y3;
-	struct s5p_gpio_bank y4;
+struct exynos5420_gpio_part4 {
 	struct s5p_gpio_bank a0;
 	struct s5p_gpio_bank a1;
 	struct s5p_gpio_bank a2;
@@ -204,6 +204,7 @@ struct exynos5412_gpio_part4 {
 	struct s5p_gpio_bank b2;
 	struct s5p_gpio_bank b3;
 	struct s5p_gpio_bank b4;
+	struct s5p_gpio_bank h0;
 };
 
 struct exynos5260_gpio_part1 {

@@ -343,7 +343,7 @@ PLATFORM_LIBS += $(PLATFORM_LIBGCC)
 PLATFORM_SPL_LIBS += $(PLATFORM_LIBGCC)
 ifeq ($(SOC),exynos)
 ifdef CONFIG_SECURE_BOOT
-ifneq ($(CONFIG_CPU_EXYNOS5430)$(CONFIG_CPU_EXYNOS5412)$(CONFIG_CPU_EXYNOS5260)$(CONFIG_CPU_EXYNOS4415)$(CONFIG_CPU_EXYNOS3250),)
+ifneq ($(CONFIG_CPU_EXYNOS5430)$(CONFIG_CPU_EXYNOS5420)$(CONFIG_CPU_EXYNOS5422)$(CONFIG_CPU_EXYNOS5260)$(CONFIG_CPU_EXYNOS4415)$(CONFIG_CPU_EXYNOS3250),)
 PLATFORM_LIBS += -L $(CPUDIR)/$(SOC)/ -lsecureboot_u-boot_v24
 else ifeq ($(CONFIG_SMDK5410), y)
 PLATFORM_LIBS += -L $(CPUDIR)/$(SOC)/ -lsecureboot_u-boot_v23
@@ -504,7 +504,7 @@ ifeq ($(SOC),exynos)
 ifeq ($(CONFIG_SECURE_BOOT),y)
 ifeq ($(CONFIG_CPU_EXYNOS5430), y)
 		cp $(CPUDIR)/$(SOC)/libsecureboot_u-boot_v24_sss_v6.txt $(CPUDIR)/$(SOC)/libsecureboot_u-boot_v24.a
-else ifneq ($(CONFIG_CPU_EXYNOS5412)$(CONFIG_CPU_EXYNOS5260)$(CONFIG_CPU_EXYNOS4415)$(CONFIG_CPU_EXYNOS3250),)
+else ifneq ($(CONFIG_CPU_EXYNOS5420)$(CONFIG_CPU_EXYNOS5422)$(CONFIG_CPU_EXYNOS5260)$(CONFIG_CPU_EXYNOS4415)$(CONFIG_CPU_EXYNOS3250),)
 		cp $(CPUDIR)/$(SOC)/libsecureboot_u-boot_v24_sss_v5.txt $(CPUDIR)/$(SOC)/libsecureboot_u-boot_v24.a
 else ifeq ($(CONFIG_SMDK5410), y)
 		cp $(CPUDIR)/$(SOC)/libsecureboot_u-boot_v23.txt $(CPUDIR)/$(SOC)/libsecureboot_u-boot_v23.a
@@ -774,7 +774,9 @@ clean:
 	       $(obj)tools/gdb/{astest,gdbcont,gdbsend}			  \
 	       $(obj)tools/gen_eth_addr    $(obj)tools/img2srec		  \
 	       $(obj)tools/mk{env,}image   $(obj)tools/mpc86x_clk	  \
-	       $(obj)tools/mk{smdk5250,smdk5410,smdk4x12,smdk5412,}spl	  \
+	       $(obj)tools/mk{smdk5250,smdk5410,smdk4x12,}spl		  \
+	       $(obj)tools/mk{smdk5420}spl				  \
+	       $(obj)tools/mk{smdk5422}spl				  \
 	       $(obj)tools/ncb		   $(obj)tools/ubsha1
 	@rm -f $(obj)board/cray/L1/{bootscript.c,bootscript.image}	  \
 	       $(obj)board/matrix_vision/*/bootscript.img		  \

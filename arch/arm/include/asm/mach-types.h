@@ -1112,8 +1112,9 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_XYREF5260            3901
 #define MACH_TYPE_XYREF4415            3900
 #define MACH_TYPE_SMDK5410             4151
-#define MACH_TYPE_SMDK5412             8002
-#define MACH_TYPE_XYREF5430            8003
+#define MACH_TYPE_SMDK5420             8002
+#define MACH_TYPE_SMDK5422             8003
+#define MACH_TYPE_XYREF5430            8004
 
 #ifdef CONFIG_ARCH_EBSA110
 # ifdef machine_arch_type

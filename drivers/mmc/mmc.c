@@ -208,7 +208,7 @@ int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 int mmc_send_status(struct mmc *mmc, int timeout)
 {
 	struct mmc_cmd cmd;
-	int err;
+	int err, retries = 5;
 #ifdef CONFIG_MMC_TRACE
 	int status;
 #endif
@@ -231,7 +231,9 @@ int mmc_send_status(struct mmc *mmc, int timeout)
 					cmd.response[0]);
 				return COMM_ERR;
 			}
-		}
+		} else if (--retries < 0)
+			return err;
+
 		udelay(1000);
 
 	} while (timeout--);
@@ -421,6 +423,150 @@ mmc_berase(int dev_num, unsigned long start, lbaint_t blkcnt)
 
 	return blk;
 }
+
+#if defined(CONFIG_S5P_MSHC)
+static unsigned long
+mmc_erase(int dev_num, unsigned long start, lbaint_t block)
+{
+	int err;
+	lbaint_t count, erase_time, dis, blk_hc;
+	lbaint_t return_blk = block;
+	struct mmc_cmd cmd;
+	struct mmc *mmc = find_mmc_device(dev_num);
+
+	printf("START: %d BLOCK: %d\n", start, block);
+	printf("high_capacity: %d\n", mmc->high_capacity);
+	printf("Capacity: %d\n", mmc->capacity);
+
+	/* Byte addressing */
+	if (mmc->high_capacity == 0) {
+		start = start * 512;
+		block = block * 512;
+	} else {
+		if (!IS_SD(mmc)) {
+			blk_hc = block;
+		/* MMC High Capacity erase minimum size is 512KB */
+			if (block < 1024) {
+				if (block < 512)
+					block = 1;
+				else
+					block = 2;
+			} else {
+				if (0 == (block%1024)) {
+					block = (block / 1024);
+				} else {
+					block = (block / 1024) + 1;
+				}
+			}
+		}
+	}
+	printf("byte_addressing\n");
+	/* Set ERASE start group */
+	if (IS_SD(mmc)) {
+		cmd.cmdidx = 32;
+	} else {
+		cmd.cmdidx = 35;
+	}
+	cmd.resp_type = MMC_RSP_R1;
+	cmd.cmdarg = start;
+	cmd.flags = 0;
+	printf("before_send_cmd\n");
+
+	err = mmc_send_cmd(mmc, &cmd, NULL);
+	if (err)
+		return err;
+
+	printf("start_addr\n");
+	/* Set ERASE start group */
+	if (IS_SD(mmc)) {
+		cmd.cmdidx = 33;
+	} else {
+		cmd.cmdidx = 36;
+	}
+	cmd.resp_type = MMC_RSP_R1;
+	cmd.cmdarg = (start + block);
+	cmd.flags = 0;
+
+	err = mmc_send_cmd(mmc, &cmd, NULL);
+	if (err)
+		return err;
+
+	printf("end_addr\n");
+	/* ERASE */
+	cmd.cmdidx = 38;
+	cmd.resp_type = MMC_RSP_R1b;
+	cmd.cmdarg = 0x0;
+	cmd.flags = 0;
+
+	err = mmc_send_cmd(mmc, &cmd, NULL);
+	if (err)
+		return err;
+
+	printf("erase_addr\n");
+	/* Byte addressing */
+	if (mmc->high_capacity == 0) {
+		start = start / 512;
+		block = block / 512;
+		erase_time = block;
+	} else {
+		if (!IS_SD(mmc)) {
+			erase_time = blk_hc;
+		} else {
+			erase_time = block;
+		}
+	}
+	if (erase_time < 2048*1024) {
+		dis = 1;
+	} else {
+		dis = 100;
+	}
+	printf("\nErase\n");
+	for (count = 1; count < erase_time ; count++) {
+
+		if (!(count%(100*dis))) {
+			printf(".");
+		}
+		if (!(count%(4000*dis))) {
+			printf("\n");
+		}
+	}
+
+	if (mmc->high_capacity && !IS_SD(mmc)) {
+		printf("\n\t\t\t*** NOTICE ***\n");
+		printf("*** High Capacity(higher than 2GB) MMC's erase "
+		"minimum size is 512KB ***\n");
+		if (block < 2) {
+			printf("\n %d KB erase Done\n", block*512);
+		} else if ((block >= 2)&&(block < 2048)){
+			printf("\n %d.%d MB erase Done\n", (block/2),
+			(block%2)*5);
+		} else {
+			printf("\n %d.%d GB erase Done\n",
+			(block/2048),
+			((block*1000)/2048) -
+			((block/2048)*1000));
+		}
+	} else {
+		if (block < 2) {
+			printf("\n %d B erase Done\n", block*512);
+		} else if ((block >= 2)&&(block < 2048)){
+			printf("\n %d KB erase Done\n", (block/2));
+		} else if ((block >= 2048)&&(block < (2048 * 1024))){
+			printf("\n %d.%d MB erase Done\n",
+			(block/2048),
+			((block*1000)/2048) -
+			((block/2048)*1000));
+		} else {
+			printf("\n %d.%d GB erase Done\n",
+			(block/(2048*1024)),
+			((block*10)/(2048*1024)) -
+			((block/(2048*1024))*10));
+		}
+	}
+
+	return return_blk;
+}
+#endif
 
 static ulong
 mmc_write_blocks(struct mmc *mmc, ulong start, lbaint_t blkcnt, const void*src)
@@ -1359,8 +1505,11 @@ int mmc_register(struct mmc *mmc)
 	mmc->block_dev.removable = 1;
 	mmc->block_dev.block_read = mmc_bread;
 	mmc->block_dev.block_write = mmc_bwrite;
+#if defined(CONFIG_S5P_MSHC)
+	mmc->block_dev.block_erase = mmc_erase;
+#else
 	mmc->block_dev.block_erase = mmc_berase;
-
+#endif
 	if (!mmc->b_max)
 		mmc->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 

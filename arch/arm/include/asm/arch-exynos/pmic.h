@@ -23,10 +23,10 @@
 #define GPD1DAT		*(volatile unsigned long *)(0x13400044)
 #define GPD1PUD		*(volatile unsigned long *)(0x13400048)
 #endif
-#elif defined(CONFIG_CPU_EXYNOS5412)
-#define GPD1CON		*(volatile unsigned long *)(0x14010120)
-#define GPD1DAT		*(volatile unsigned long *)(0x14010124)
-#define GPD1PUD		*(volatile unsigned long *)(0x14010128)
+#elif defined(CONFIG_CPU_EXYNOS5420)
+#define GPD1CON		*(volatile unsigned long *)(0x14010040)
+#define GPD1DAT		*(volatile unsigned long *)(0x14010044)
+#define GPD1PUD		*(volatile unsigned long *)(0x14010048)
 #else
 #define GPD1CON		*(volatile unsigned long *)(0x114000C0)
 #define GPD1DAT		*(volatile unsigned long *)(0x114000C4)
@@ -120,7 +120,7 @@ extern void pmic8767_init(void);
 #define CALC_MAXIM77686_LDO1267815_VOLT(x)	( (x<800) ? 0 : ((x-800)/25) )
 #define CALC_MAXIM77686_ALL_LDO_VOLT(x)         ( (x<800) ? 0 : ((x-800)/50) )
 
-#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5420)
 #define VDD_BASE_VOLT	1.00
 #define VDD_BASE_VAL	0x40
 #define CONFIG_PM_CALC_VOLT(x)	(VDD_BASE_VAL + ((x - VDD_BASE_VOLT) * 20 * 8))

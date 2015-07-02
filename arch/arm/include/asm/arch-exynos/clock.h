@@ -2264,7 +2264,7 @@ struct exynos5430_clock_cpif {
 	unsigned int	clkout_cmu_cpif;			/* 0x13B9_0C00 */
 };
 
-struct exynos5412_clock {
+struct exynos5420_clock {
 	unsigned int	apll_lock;			/* 0x1001_0000 */
 	unsigned char	res1[0xfc];
 	unsigned int	apll_con0;			/* 0x1001_0100 */
@@ -2358,14 +2358,22 @@ struct exynos5412_clock {
 	unsigned int	src_top10;			/* 0x1002_0280 */
 	unsigned int	src_top11;			/* 0x1002_0284 */
 	unsigned int	src_top12;			/* 0x1002_0288 */
-	unsigned char	res29[0x274];
+	unsigned char	res29[0x18c];
+        unsigned int    mux_stat_top6;                  /* 0x1002_0418 */
+	unsigned char	res30[0xe4];
 	unsigned int	div_top0;			/* 0x1002_0500 */
 	unsigned int	div_top1;			/* 0x1002_0504 */
 	unsigned int	div_top2;			/* 0x1002_0508 */
 	unsigned int	div_top3;			/* 0x1002_050C */
-	unsigned char	res30[0x1C];
+	unsigned int	div_top4;			/* 0x1002_0510 */
+	unsigned int	div_top5;			/* 0x1002_0514 */
+	unsigned int	div_top6;			/* 0x1002_0518 */
+	unsigned int	div_top7;			/* 0x1002_051C */
+	unsigned int	div_top8;			/* 0x1002_0520 */
+	unsigned int	div_top9;			/* 0x1002_0524 */
+	unsigned char	res31[0x4];
 	unsigned int	div_disp10;			/* 0x1002_052C */
-	unsigned char	res31[0x14];
+	unsigned char	res32[0x14];
 	unsigned int	div_mau;			/* 0x1002_0544 */
 	unsigned int	div_fsys0;			/* 0x1002_0548 */
 	unsigned int	div_fsys1;			/* 0x1002_054C */
@@ -2376,37 +2384,37 @@ struct exynos5412_clock {
 	unsigned int	div_peric2;			/* 0x1002_0560 */
 	unsigned int	div_peric3;			/* 0x1002_0564 */
 	unsigned int	div_peric4;			/* 0x1002_0568 */
-	unsigned char	res32[0x14];
+	unsigned char	res33[0x14];
 	unsigned int	div_s_isp0;			/* 0x1002_0580 */
 	unsigned int	div_s_isp1;			/* 0x1002_0584 */
-	unsigned char	res33[0x8];
+	unsigned char	res34[0x8];
 	unsigned int	div2_ratio0;			/* 0x1002_0590 */
-	unsigned char	res34[0xc];
+	unsigned char	res35[0xc];
 	unsigned int	div4_ratio;			/* 0x1002_05A0 */
-	unsigned char	res35[0x45c];
+	unsigned char	res36[0x45c];
 	unsigned int	clkout_cmu_top;			/* 0x1002_0A00 */
-	unsigned char	res36[0xfc];
+	unsigned char	res37[0xfc];
 	unsigned int	wdrex0_pause;			/* 0x1002_0B00 */
 	unsigned int	wdrex1_pause;			/* 0x1002_0B04 */
 	unsigned int	wdrex2_pause;			/* 0x1002_0B08 */
 	unsigned int	wdrex3_pause;			/* 0x1002_0B0C */
-	unsigned char	res361[0xf500];
-	unsigned int	xpll_lock;			/* 0x1003_0010 */
-	unsigned char	res37[0xfc];
-	unsigned int	xpll_con0;			/* 0x1003_0110 */
-	unsigned int	xpll_con1;			/* 0x1003_0114 */
-	unsigned char	res38[0xe8];
+	unsigned char	res371[0xf500];
+	unsigned int	bpll_lock;			/* 0x1003_0010 */
+	unsigned char	res38[0xfc];
+	unsigned int	bpll_con0;			/* 0x1003_0110 */
+	unsigned int	bpll_con1;			/* 0x1003_0114 */
+	unsigned char	res39[0xe8];
 	unsigned int	src_cdrex;			/* 0x1003_0200 */
-	unsigned char	res39[0x1fc];
+	unsigned char	res40[0x1fc];
 	unsigned int	mux_stat_cdrex;			/* 0x1003_0400 */
-	unsigned char	res40[0xfc];
+	unsigned char	res41[0xfc];
 	unsigned int	div_cdrex0;			/* 0x1003_0500 */
 	unsigned int	div_cdrex1;			/* 0x1003_0504 */
-	unsigned char	res41[0x414];
+	unsigned char	res42[0x414];
 	unsigned int	pause;				/* 0x1003_091C */
-	unsigned char	res412[0xe0];
+	unsigned char	res421[0xe0];
 	unsigned int	clkout_cmu_cdrex;		/* 0x1003_0A00 */
-        unsigned char	res42[0xc];
+        unsigned char	res43[0xc];
 	unsigned int	lpddr3phy_ctrl;			/* 0x1003_0A10 */
 	unsigned int	lpddr3phy_con0;			/* 0x1003_0A14 */
 	unsigned int	lpddr3phy_con1;			/* 0x1003_0A18 */
@@ -2414,23 +2422,14 @@ struct exynos5412_clock {
 	unsigned int	lpddr3phy_con3;			/* 0x1003_0A20 */
 	unsigned int	lpddr3phy_con4;			/* 0x1003_0A24 */
 	unsigned int	lpddr3phy_con5;			/* 0x1003_0A28 */
-	unsigned char	res43[0x35E4];
-	unsigned int	bpll_lock;			/* 0x1003_4010 */
-	unsigned char	res44[0xfc];
-	unsigned int	bpll_con0;			/* 0x1003_4110 */
-	unsigned int	bpll_con1;			/* 0x1003_4114 */
-	unsigned char	res45[0xe8];
-	unsigned int	src_cci;			/* 0x1003_4200 */
-	unsigned char	res46[0x2fc];
-	unsigned int	div_cci0;			/* 0x1003_4500 */
-	unsigned char	res461[0x3afc];
+	unsigned char	res44[0x75d4];
 	unsigned int	kpll_lock;			/* 0x1003_8000 */
-	unsigned char	res47[0xfc];
+	unsigned char	res45[0xfc];
 	unsigned int	kpll_con0;			/* 0x1003_8100 */
 	unsigned int	kpll_con1;			/* 0x1003_8104 */
-	unsigned char	res48[0xf8];
+	unsigned char	res46[0xf8];
 	unsigned int	src_kfc;			/* 0x1003_8200 */
-	unsigned char	res49[0x2fc];
+	unsigned char	res47[0x2fc];
 	unsigned int	div_kfc0;			/* 0x1003_8500 */
 };
 #endif

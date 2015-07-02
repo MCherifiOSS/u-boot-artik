@@ -60,7 +60,7 @@ int print_cpuinfo(void)
 	printf("CPU: %s%x Rev%x.%x [Samsung SOC on SMP Platform Base on ARM CortexA%d]\n"	\
 		, s5p_get_cpu_name(), s5p_cpu_id, s5p_cpu_rev, subrev, ((cpuid >> 4) & 0xf));
 
-#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5420)
 	unsigned int apll = get_pll_clk(APLL);
 	unsigned int kpll = get_pll_clk(KPLL);
 	unsigned int mpll = get_pll_clk(MPLL);

@@ -547,6 +547,11 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr, u
 
 #if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
 			nul_buf_align = calloc(sizeof(char), 512*1024 + 4);
+			if (nul_buf_align == NULL) {
+				printf("Error: calloc failed for nul_buf_align\n");
+				ret = 1;
+				return ret;
+			}
 			if (((unsigned int)nul_buf_align % 8) == 0)
 				nul_buf = nul_buf_align;
 			else

@@ -111,9 +111,9 @@ static unsigned long exynos5_get_pll_clk(int pllreg)
 #ifdef CONFIG_CPU_EXYNOS5410
 	struct exynos5410_clock *clk =
 		(struct exynos5_clock *)samsung_get_base_clock();
-#elif defined(CONFIG_CPU_EXYNOS5412)
-	struct exynos5412_clock *clk =
-		(struct exynos5412_clock *)samsung_get_base_clock();
+#elif defined(CONFIG_CPU_EXYNOS5420)
+	struct exynos5420_clock *clk =
+		(struct exynos5420_clock *)samsung_get_base_clock();
 #else
 	struct exynos5_clock *clk =
 		(struct exynos5_clock *)samsung_get_base_clock();
@@ -137,7 +137,7 @@ static unsigned long exynos5_get_pll_clk(int pllreg)
 		r = readl(&clk->vpll_con0);
 		k = readl(&clk->vpll_con1);
 		break;
-#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5420)
 	case KPLL:
 		r = readl(&clk->kpll_con0);
 		break;
@@ -147,10 +147,15 @@ static unsigned long exynos5_get_pll_clk(int pllreg)
 	case CPLL:
 		r = readl(&clk->cpll_con0);
 		break;
-#endif
-#if defined(CONFIG_CPU_EXYNOS5412)
 	case SPLL:
 		r = readl(&clk->spll_con0);
+		break;
+	case DPLL:
+		r = readl(&clk->dpll_con0);
+		break;
+	case RPLL:
+		r = readl(&clk->rpll_con0);
+		k = readl(&clk->rpll_con1);
 		break;
 #endif
 	default:
@@ -166,7 +171,8 @@ static unsigned long exynos5_get_pll_clk(int pllreg)
 	 */
 	if (pllreg == APLL || pllreg == MPLL ||
 			pllreg == KPLL || pllreg == BPLL ||
-			pllreg == CPLL || pllreg == SPLL)
+			pllreg == CPLL || pllreg == SPLL ||
+			pllreg == DPLL)
 		mask = 0x3ff;
 	else
 		mask = 0x1ff;
@@ -180,7 +186,7 @@ static unsigned long exynos5_get_pll_clk(int pllreg)
 
 	freq = CONFIG_SYS_CLK_FREQ;
 
-	if (pllreg == EPLL) {
+	if ((pllreg == EPLL) || (pllreg == RPLL)) {
 		k = k & 0xffff;
 		/* FOUT = (MDIV + K / 65536) * FIN / (PDIV * 2^SDIV) */
 		fout = (m + k / 65536) * (freq / (p * (1 << s)));
@@ -189,7 +195,7 @@ static unsigned long exynos5_get_pll_clk(int pllreg)
 		/* FOUT = (MDIV + K / 1024) * FIN / (PDIV * 2^SDIV) */
 		fout = (m + k / 1024) * (freq / (p * (1 << s)));
 	} else {
-#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5420)
 		s += 1;
 #else
 		if (s < 1)
@@ -623,17 +629,19 @@ static unsigned long exynos5_get_uart_clk(int dev_index)
 	 * UART5_SEL [23:20]
 	 */
 	sel = readl(&clk->src_peric0);
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	sel = (sel >> ((dev_index + 1) << 2)) & 0xf;
 #else
 	sel = (sel >> (dev_index << 2)) & 0xf;
 #endif
 
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	if (sel == 0x3)
 		sclk = get_pll_clk(MPLL);
 	else if (sel == 0x6)
 		sclk = get_pll_clk(EPLL);
+	else if (sel == 0x1)
+		sclk = get_pll_clk(CPLL);
 	else
 		return 0;
 #else
@@ -658,7 +666,7 @@ static unsigned long exynos5_get_uart_clk(int dev_index)
 	 * UART5_RATIO [23:20]
 	 */
 	ratio = readl(&clk->div_peric0);
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	ratio = (ratio >> ((dev_index + 2) << 2)) & 0xf;
 #else
 	ratio = (ratio >> (dev_index << 2)) & 0xf;
@@ -803,7 +811,7 @@ static unsigned long exynos5_get_usbdrd_clk(void)
 	sel = readl(&clk->src_fsys);
 	sel = (sel >> 28) & 0xf;
 
-#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5410) || defined(CONFIG_CPU_EXYNOS5420)
 	sclk = 24000000;
 #else
 	if (sel == 0x0)
@@ -902,7 +910,7 @@ static void exynos5_set_mmc_clk(int dev_index, unsigned int div)
 	 * MMC2_PRE_RATIO [15:8], MMC3_PRE_RATIO [31:24]
 	 * MMC2_RATIO [3:0],	  MMC3_RATIO [16:19]
 	 */
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	addr = (unsigned int)&clk->div_fsys1;
 #else
 	if (dev_index < 2) {
@@ -913,7 +921,7 @@ static void exynos5_set_mmc_clk(int dev_index, unsigned int div)
 	}
 #endif
 
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	val = readl(addr);
 	if (dev_index == 0) {
 		val &= ~(0x3ff);
@@ -1078,19 +1086,21 @@ static unsigned long exynos5_get_mmc_clk(int dev_index)
 	unsigned long sclk;
 
 	sel = readl(&clk->src_fsys);
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	sel = (sel >> ((dev_index + 2) << 2)) & 0xf;
 #else
 	sel = (sel >> (dev_index << 2)) & 0xf;
 #endif
 
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	if (sel == 0x3)
 		sclk = get_pll_clk(MPLL);
 	else if (sel == 0x4)
 		sclk = get_pll_clk(SPLL);
 	else if (sel == 0x6)
 		sclk = get_pll_clk(EPLL);
+	else if (sel == 0x1)
+		sclk = get_pll_clk(CPLL);
 	else
 		return 0;
 #else
@@ -1112,7 +1122,7 @@ static unsigned long exynos5_get_mmc_clk(int dev_index)
 	 * MMC2_PRE_RATIO [15:8], MMC3_PRE_RATIO [31:24]
 	 * MMC2_RATIO [3:0],	  MMC3_RATIO [16:19]
 	 */
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	addr = (unsigned int)&clk->div_fsys1;
 #else
 	if (dev_index < 2) {
@@ -1124,7 +1134,7 @@ static unsigned long exynos5_get_mmc_clk(int dev_index)
 #endif
 
 	ratio = readl(addr);
-#if defined(CONFIG_CPU_EXYNOS5412)
+#if defined(CONFIG_CPU_EXYNOS5420)
 	if (dev_index == 0)
 		ratio = ratio & 0x3ff;
 	else

@@ -32,6 +32,8 @@
 #define CPLL	7
 #define SPLL	8
 #define UPLL	9
+#define DPLL	10
+#define RPLL	11
 
 /* EXYNOS5260, EXYNOS5430 PLL */
 #define EGL_PLL		0
