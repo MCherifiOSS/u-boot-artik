@@ -83,6 +83,14 @@ int do_mdm_init = 0;
 extern void mdm_init(void); /* defined in board.c */
 #endif
 
+#ifdef CONFIG_USE_LCD
+extern void Lcd_read_bootlogo(void);
+extern void Backlight_Turnon(void);
+extern void Display_Turnon(void);
+extern void Display_Turnoff(void);
+extern void s5p_lcd_draw_bootlogo(void);
+#endif
+
 /***************************************************************************
  * Watch for 'delay' seconds for autoboot stop or autoboot delay string.
  * returns: 0 -  no key string, allow autoboot 1 - got key string, abort
@@ -345,6 +353,13 @@ void main_loop (void)
 	update_tftp (0UL);
 #endif /* CONFIG_UPDATE_TFTP */
 
+#ifdef CONFIG_USE_LCD // display turnon
+	Display_Turnon();
+	Lcd_read_bootlogo();
+	s5p_lcd_draw_bootlogo();
+	Backlight_Turnon();
+#endif
+
 #if defined(CONFIG_BOOTDELAY) && (CONFIG_BOOTDELAY >= 0)
 	s = getenv ("bootdelay");
 	bootdelay = s ? (int)simple_strtol(s, NULL, 10) : CONFIG_BOOTDELAY;
@@ -372,11 +387,16 @@ void main_loop (void)
 	}
 	else
 #endif /* CONFIG_BOOTCOUNT_LIMIT */
-		s = getenv ("bootcmd");
+	s = getenv ("bootcmd");
 
 	debug ("### main_loop: bootcmd=\"%s\"\n", s ? s : "<UNDEFINED>");
 
 	if (bootdelay >= 0 && s && !abortboot (bootdelay)) {
+#ifdef CONFIG_USE_LCD // display turnoff
+#ifdef CONFIG_S5P_LCD_INIT
+		Display_Turnoff();
+#endif
+#endif
 # ifdef CONFIG_AUTOBOOT_KEYED
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 # endif

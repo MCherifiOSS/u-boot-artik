@@ -944,6 +944,18 @@ static int do_env(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return CMD_RET_USAGE;
 }
 
+int do_saveenvone(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	if (argc != 3) {
+		printf("Usage:%s \n", cmdtp->usage);
+		return -1;
+	}
+
+	saveenv_one_variable(argv[1], argv[2]);
+
+	return 0;
+}
+
 U_BOOT_CMD(
 	env, CONFIG_SYS_MAXARGS, 1, do_env,
 	"environment handling commands",
@@ -1038,3 +1050,9 @@ U_BOOT_CMD_COMPLETE(
 	var_complete
 );
 #endif
+
+U_BOOT_CMD(
+	saveenvone,	3,	0,	do_saveenvone,
+	"saveenvone\t- save only one env variable.",
+	"Example\t- \"saveenvone <env name> <env value>\""
+);

@@ -73,7 +73,9 @@ static void draw_logo(void)
 	y = ((panel_height - panel_info.logo_height) >> 1) - 4;
 
 	addr = panel_info.logo_addr;
+#ifdef CONFIG_CMD_BMP
 	bmp_display(addr, x, y);
+#endif
 }
 
 static void lcd_panel_on(vidinfo_t *vid)

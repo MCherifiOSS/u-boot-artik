@@ -36,6 +36,24 @@
 #define RATE_MASK(x)		(0x1 << (x + 16))
 #define RATE_SET(x)		(0x1 << (x + 16))
 
+#ifdef CONFIG_GPIO_DAT_MASK
+void s5p_gpio_dat_mask(struct s5p_gpio_bank *bank, unsigned int *dat)
+{
+	unsigned int i, con, dat_mask=0;
+
+	con = readl(&bank->con);
+	for (i = 0; i < 8; i++)
+	{
+		if (((con >> (i * 4)) & 0xf) == GPIO_OUTPUT)
+			dat_mask |= 1 << i;
+	}
+
+	*dat &= dat_mask;
+}
+#else
+void s5p_gpio_dat_mask(struct s5p_gpio_bank *bank, unsigned int *dat) {}
+#endif
+
 void s5p_gpio_cfg_pin(struct s5p_gpio_bank *bank, int gpio, int cfg)
 {
 	unsigned int value;
@@ -56,6 +74,7 @@ void s5p_gpio_direction_output(struct s5p_gpio_bank *bank, int gpio, int en)
 	value &= ~DAT_MASK(gpio);
 	if (en)
 		value |= DAT_SET(gpio);
+	s5p_gpio_dat_mask(bank, &value);
 	writel(value, &bank->dat);
 }
 
@@ -72,6 +91,7 @@ void s5p_gpio_set_value(struct s5p_gpio_bank *bank, int gpio, int en)
 	value &= ~DAT_MASK(gpio);
 	if (en)
 		value |= DAT_SET(gpio);
+	s5p_gpio_dat_mask(bank, &value);
 	writel(value, &bank->dat);
 }
 

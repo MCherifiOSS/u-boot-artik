@@ -847,6 +847,58 @@ struct exynos5_power {
 	unsigned int	cmu_reset_mau_option;
 	unsigned char	res163[0x24];
 };
+
+struct exynos5260_power {
+	unsigned int	om_stat;
+	unsigned char	res1[0x3fc];
+	unsigned int	sw_reset;
+	unsigned int	rst_stat;
+	unsigned char	res2[0x3f8];
+	unsigned int	inform0;
+	unsigned int	inform1;
+	unsigned int	inform2;
+	unsigned int	inform3;
+	unsigned int	sysip_dat0;
+	unsigned int	sysip_dat1;
+	unsigned int	sysip_dat2;
+	unsigned int	sysip_dat3;
+	unsigned char	res3[0xe0];
+	unsigned int	pmu_spare0;
+	unsigned int	pmu_spare1;
+	unsigned int	pmu_spare2;
+	unsigned int	pmu_spare3;
+	unsigned char	res4[0x70];
+	unsigned int	irom_data_reg0;
+	unsigned int	irom_data_reg1;
+	unsigned int	irom_data_reg2;
+	unsigned int	irom_data_reg3;
+};
+
+struct exynos5430_power {
+	unsigned int	om_stat;		/* 0x105C_0000 */
+	unsigned char	res1[0x3fc];
+	unsigned int	swreset;
+	unsigned int	rst_stat;
+	unsigned char	res2[0x3f8];
+	unsigned int	inform0;
+	unsigned int	inform1;
+	unsigned int	inform2;
+	unsigned int	inform3;
+	unsigned int	sysip_dat0;
+	unsigned int	sysip_dat1;
+	unsigned int	sysip_dat2;
+	unsigned int	sysip_dat3;
+	unsigned char	res3[0xe0];
+	unsigned int	pmu_spare0;
+	unsigned int	pmu_spare1;
+	unsigned int	pmu_spare2;
+	unsigned int	pmu_spare3;
+	unsigned char	res4[0x70];
+	unsigned int	irom_data_reg0;
+	unsigned int	irom_data_reg1;
+	unsigned int	irom_data_reg2;
+	unsigned int	irom_data_reg3;
+};
 #endif	/* __ASSEMBLY__ */
 
 void set_mipi_phy_ctrl(unsigned int dev_index, unsigned int enable);

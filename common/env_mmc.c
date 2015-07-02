@@ -153,3 +153,74 @@ void env_relocate_spec(void)
 	env_import(buf, 1);
 #endif
 }
+
+#ifdef CONFIG_CMD_SAVEENV
+struct hsearch_data env_htab_temp;
+
+void env_read_from_emmc_to_htab(struct hsearch_data *htab_temp, u32 *offset)
+{
+#if !defined(ENV_IS_EMBEDDED)
+	ALLOC_CACHE_ALIGN_BUFFER(char, buf, CONFIG_ENV_SIZE);
+	struct mmc *mmc = find_mmc_device(CONFIG_SYS_MMC_ENV_DEV);
+
+	if (init_mmc_for_env(mmc) || mmc_get_env_addr(mmc, offset))
+		set_default_env_htab("mmc init error", htab_temp);
+
+	if (read_env(mmc, CONFIG_ENV_SIZE, *offset, buf))
+		set_default_env_htab("read env failed", htab_temp);
+
+	if (!env_import_htab(buf, 1, htab_temp))
+		printf("error import env to htab\n");
+#endif
+}
+
+int env_write_from_htab_to_emmc(struct hsearch_data *htab_temp, u32 *offset)
+{
+	ssize_t len;
+	char    *res;
+	struct mmc *mmc = find_mmc_device(CONFIG_SYS_MMC_ENV_DEV);
+
+	ALLOC_CACHE_ALIGN_BUFFER(env_t, env_new, 1);
+
+	res = (char *)&env_new->data;
+
+	len = hexport_r(htab_temp, '\0', &res, ENV_SIZE, 0, NULL);
+	if (len < 0) {
+		error("Cannot export environment: errno = %d\n", errno);
+		return 1;
+	}
+
+	env_new->crc = crc32(0, &env_new->data[0], ENV_SIZE);
+	if (write_env(mmc, CONFIG_ENV_SIZE, *offset, (u_char *)env_new)) {
+		puts("failed\n");
+		return 1;
+	}
+
+	puts("done\n");
+	return 0;
+}
+
+int saveenv_one_variable(const char *env_name, const char *env_data)
+{
+	ssize_t len;
+	char    *res;
+	u32     offset;
+	ENTRY   e, *ep;
+	int     retval;
+
+	env_read_from_emmc_to_htab(&env_htab_temp, &offset);
+
+	e.key = env_name;
+	e.data = env_data;
+
+	hsearch_r(e, ENTER, &ep, &env_htab_temp);
+	if (ep == NULL) {
+		printf("## Error inserting \"%s\" variable, error=%d\n", env_name, errno);
+	return 1;
+	}
+
+	retval = env_write_from_htab_to_emmc(&env_htab_temp, &offset);
+
+	return retval;
+}
+#endif

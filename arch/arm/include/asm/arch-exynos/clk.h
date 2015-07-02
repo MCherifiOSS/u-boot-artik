@@ -27,11 +27,33 @@
 #define EPLL	2
 #define HPLL	3
 #define VPLL	4
+#define KPLL	5
+#define BPLL	6
+#define CPLL	7
+#define SPLL	8
+#define UPLL	9
+
+/* EXYNOS5260, EXYNOS5430 PLL */
+#define EGL_PLL		0
+#define EGL_DPLL	1
+#define KFC_PLL		2
+#define MEM_PLL		3
+#define BUS_PLL		4
+#define MEDIA_PLL	5
+
+/* EXYNOS5430 PLL */
+#define MFC_PLL		5
+#define ISP_PLL		6
+#define MPHY_PLL	7
+
+#define MPLL_PRE_DIV	2
 
 unsigned long get_pll_clk(int pllreg);
 unsigned long get_arm_clk(void);
 unsigned long get_pwm_clk(void);
 unsigned long get_uart_clk(int dev_index);
+unsigned long get_mmc_clk(int dev_index);
+unsigned long get_usbdrd_clk(void);
 void set_mmc_clk(int dev_index, unsigned int div);
 unsigned long get_lcd_clk(void);
 void set_lcd_clk(void);

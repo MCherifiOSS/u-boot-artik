@@ -242,6 +242,27 @@ int exynos_mipi_dsi_init(void)
 	return 0;
 }
 
+void exynos_mipi_dsi_stop(void)
+{
+	struct mipi_dsim_device *dsim;
+
+	dsim = kzalloc(sizeof(struct mipi_dsim_device), GFP_KERNEL);
+	if (!dsim) {
+		debug("failed to allocate dsim object.\n");
+		return -EFAULT;
+	}
+
+	exynos_mipi_dsi_sw_reset(dsim);
+	exynos_mipi_dsi_enable_hs_clock(dsim, 0);
+	exynos_mipi_dsi_enable_byte_clock(dsim, 0);
+	exynos_mipi_dsi_enable_lane(dsim, dsim->data_lane, 0);
+	exynos_mipi_dsi_enable_pll(dsim, 0);
+	/* phy_enable(unsigned int dev_index, unsigned int enable) */
+	if (dsim_pd->phy_enable)
+		dsim_pd->phy_enable(0, 0);
+
+}
+
 void exynos_set_dsim_platform_data(struct exynos_platform_mipi_dsim *pd)
 {
 	if (pd == NULL) {

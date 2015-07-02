@@ -199,6 +199,30 @@ void set_default_env(const char *s)
 	gd->flags |= GD_FLG_ENV_READY;
 }
 
+void set_default_env_htab(const char *s, struct hsearch_data *htab_temp)
+{
+	if (sizeof(default_environment) > ENV_SIZE) {
+		puts("*** Error - default environment is too large\n\n");
+		return;
+	}
+
+	if (s) {
+		if (*s == '!') {
+			printf("*** Warning - %s, "
+				"using default environment\n\n",
+				s + 1);
+		} else {
+			puts(s);
+		}
+	} else {
+		puts("Using default environment\n\n");
+	}
+
+	if (himport_r(htab_temp, (char *)default_environment,
+			sizeof(default_environment), '\0', 0) == 0)
+		error("Environment import failed: errno = %d\n", errno);
+}
+
 /*
  * Check if CRC is valid and (if yes) import the environment.
  * Note that "buf" may or may not be aligned.
@@ -226,6 +250,32 @@ int env_import(const char *buf, int check)
 	error("Cannot import environment: errno = %d\n", errno);
 
 	set_default_env("!import failed");
+
+	return 0;
+}
+
+int env_import_htab(const char *buf, int check,  struct hsearch_data *htab_temp)
+{
+	env_t *ep = (env_t *)buf;
+
+	if (check) {
+		uint32_t crc;
+
+		memcpy(&crc, &ep->crc, sizeof(crc));
+
+		if (crc32(0, ep->data, ENV_SIZE) != crc) {
+			set_default_env_htab("!bad CRC", htab_temp);
+			return 0;
+		}
+	}
+
+	if (himport_r(htab_temp, (char *)ep->data, ENV_SIZE, '\0', 0)) {
+		return 1;
+	}
+
+	error("Cannot import environment: errno = %d\n", errno);
+
+	set_default_env_htab("!import failed", htab_temp);
 
 	return 0;
 }

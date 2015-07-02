@@ -36,6 +36,12 @@
 #include <asm/bootm.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+#ifdef CONFIG_CPU_EXYNOS5430
+#define Inp32(addr) (*(volatile u32 *)(addr))
+#define GetBits(uAddr, uBaseBit, uMaskValue) \
+    ((Inp32(uAddr)>>(uBaseBit))&(uMaskValue))
+#define GetPOPType() (GetBits(0x10000004, 4, 0x3))
+#endif
 
 #if defined(CONFIG_SETUP_MEMORY_TAGS) || \
 	defined(CONFIG_CMDLINE_TAG) || \
@@ -92,12 +98,25 @@ static int fixup_memory_node(void *blob)
 }
 #endif
 
+#ifdef CONFIG_PREP_BOARDCONFIG_FOR_KERNEL
+void __prep_boardconfig_for_kernel(void)
+{
+
+}
+
+void prep_boardconfig_for_kernel(void)
+	__attribute__((weak, alias("__prep_boardconfig_for_kernel")));
+#endif
+
 static void announce_and_cleanup(void)
 {
 	printf("\nStarting kernel ...\n\n");
 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
 #ifdef CONFIG_BOOTSTAGE_REPORT
 	bootstage_report();
+#endif
+#ifdef CONFIG_PREP_BOARDCONFIG_FOR_KERNEL
+	prep_boardconfig_for_kernel();
 #endif
 
 #ifdef CONFIG_USB_DEVICE
@@ -130,8 +149,18 @@ static void setup_start_tag (bd_t *bd)
 static void setup_memory_tags(bd_t *bd)
 {
 	int i;
+#ifdef CONFIG_CPU_EXYNOS5430
+	int nr_dram_banks;
 
+	if (GetPOPType() == 1)
+		nr_dram_banks = 12;
+	else
+		nr_dram_banks = 8;
+
+	for (i = 0; i < nr_dram_banks; i++) {
+#else
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
+#endif
 		params->hdr.tag = ATAG_MEM;
 		params->hdr.size = tag_size (tag_mem32);
 

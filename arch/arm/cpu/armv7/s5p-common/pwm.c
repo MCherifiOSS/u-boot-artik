@@ -114,9 +114,6 @@ int pwm_config(int pwm_id, int duty_ns, int period_ns)
 	if (tcmp == tcnt)
 		tcmp--;
 
-	if (tcmp < 0)
-		tcmp = 0;
-
 	/* Update the PWM register block. */
 	offset = pwm_id * 3;
 	if (pwm_id < 4) {
@@ -167,8 +164,14 @@ int pwm_init(int pwm_id, int div, int invert)
 	val |= (div & 0xf) << MUX_DIV_SHIFT(pwm_id);
 	writel(val, &pwm->tcfg1);
 
+#ifdef CONFIG_CPU_EXYNOS5410
+	timer_rate_hz = 2500000;
+#elif defined(CONFIG_CPU_EXYNOS5412)
+	timer_rate_hz = 1800000;
+#else
 	timer_rate_hz = get_pwm_clk() / ((prescaler + 1) *
 			(div + 1));
+#endif
 
 	timer_rate_hz = timer_rate_hz / 100;
 

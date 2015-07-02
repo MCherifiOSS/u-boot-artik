@@ -135,7 +135,7 @@ static void exynos_fimd_set_clock(vidinfo_t *pvid)
 				 pvid->vl_vbpd + pvid->vl_row);
 	} else if (pvid->interface_mode == FIMD_CPU_INTERFACE) {
 		pixel_clock = pvid->vl_freq *
-				pvid->vl_width * pvid->vl_height *
+				pvid->vl_width * pvid->vl_height * 2 *
 				(pvid->cs_setup + pvid->wr_setup +
 				 pvid->wr_act + pvid->wr_hold + 1);
 	} else {
@@ -183,11 +183,19 @@ void exynos_set_trigger(void)
 	struct exynos4_fb *fimd_ctrl =
 		(struct exynos4_fb *)samsung_get_base_fimd();
 
+#ifdef CONFIG_CPU_EXYNOS3250
+	cfg = readl(0x11c201a4);
+#else
 	cfg = readl(&fimd_ctrl->trigcon);
+#endif
 
 	cfg |= (EXYNOS_I80SOFT_TRIG_EN | EXYNOS_I80START_TRIG);
 
+#ifdef CONFIG_CPU_EXYNOS3250
+	writel(cfg, 0x11c201a4);
+#else
 	writel(cfg, &fimd_ctrl->trigcon);
+#endif
 }
 
 int exynos_is_i80_frame_done(void)
@@ -197,7 +205,11 @@ int exynos_is_i80_frame_done(void)
 	struct exynos4_fb *fimd_ctrl =
 		(struct exynos4_fb *)samsung_get_base_fimd();
 
+#ifdef CONFIG_CPU_EXYNOS3250
+	cfg = readl(0x11c201a4);
+#else
 	cfg = readl(&fimd_ctrl->trigcon);
+#endif
 
 	/* frame done func is valid only when TRIMODE[0] is set to 1. */
 	status = (cfg & EXYNOS_I80STATUS_TRIG_DONE) ==
@@ -316,6 +328,64 @@ void exynos_fimd_lcd_init(vidinfo_t *vid)
 		cfg |= EXYNOS_VIDTCON2_LINEVAL(pvid->vl_row - 1);
 
 		writel(cfg, &fimd_ctrl->vidtcon2);
+	}
+	else if(vid->interface_mode == FIMD_CPU_INTERFACE) {
+		cfg |= EXYNOS_VIDCON0_DSI_ENABLE;
+		writel(cfg, &fimd_ctrl->vidcon0);
+
+		cfg = readl(&fimd_ctrl->vidcon2);
+		cfg &= ~(EXYNOS_VIDCON2_WB_MASK |
+			EXYNOS_VIDCON2_TVFORMATSEL_MASK |
+			EXYNOS_VIDCON2_TVFORMATSEL_YUV_MASK);
+		cfg |= EXYNOS_VIDCON2_WB_DISABLE;
+		writel(cfg, &fimd_ctrl->vidcon2);
+
+//VIDOUT_CON
+		cfg = readl(0x11c20000);
+		cfg |= (0x2 << 8);	//Indirect I80 interface for LDI0
+		writel(cfg, 0x11c20000);
+
+		/* set polarity */
+		cfg = 0;
+		if (!pvid->vl_clkp)
+			cfg |= EXYNOS_VIDCON1_IVCLK_RISING_EDGE;
+		if (!pvid->vl_hsp)
+			cfg |= EXYNOS_VIDCON1_IHSYNC_INVERT;
+		if (!pvid->vl_vsp)
+			cfg |= EXYNOS_VIDCON1_IVSYNC_INVERT;
+		if (!pvid->vl_dp)
+			cfg |= EXYNOS_VIDCON1_IVDEN_INVERT;
+
+#ifdef CONFIG_CPU_EXYNOS3250
+		writel(0x680, 0x11c20004);
+#else
+		writel(cfg, &fimd_ctrl->vidcon1);
+#endif
+
+		/* set timing */
+		cfg = EXYNOS_VIDTCON0_VFPD(pvid->vl_vfpd - 1);
+		cfg |= EXYNOS_VIDTCON0_VBPD(pvid->vl_vbpd - 1);
+		cfg |= EXYNOS_VIDTCON0_VSPW(pvid->vl_vspw - 1);
+		writel(cfg, &fimd_ctrl->vidtcon0);
+
+		cfg = EXYNOS_VIDTCON1_HFPD(pvid->vl_hfpd - 1);
+		cfg |= EXYNOS_VIDTCON1_HBPD(pvid->vl_hbpd - 1);
+		cfg |= EXYNOS_VIDTCON1_HSPW(pvid->vl_hspw - 1);
+
+		writel(cfg, &fimd_ctrl->vidtcon1);
+
+		/* set lcd size */
+		cfg = EXYNOS_VIDTCON2_HOZVAL(pvid->vl_col - 1);
+		cfg |= EXYNOS_VIDTCON2_LINEVAL(pvid->vl_row - 1);
+
+#ifdef CONFIG_CPU_EXYNOS3250
+		writel(cfg, 0x11c20018);
+#else
+		writel(cfg, &fimd_ctrl->vidtcon2);
+#endif
+
+//I80IFCONA0	LCD_WR_ACT[11:8] I80IFEN[0]
+		writel(0x00000101, 0x11c201b0);
 	}
 
 	/* set display mode */

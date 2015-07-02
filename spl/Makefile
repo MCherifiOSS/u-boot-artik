@@ -117,9 +117,15 @@ endif
 all:	$(ALL-y)
 
 ifdef CONFIG_SAMSUNG
+ifdef CONFIG_SPL_15KB
+$(obj)$(BOARD)-spl.bin: $(obj)u-boot-spl.bin
+	$(OBJTREE)/tools/mk$(BOARD)spl15kb \
+		$(obj)u-boot-spl.bin $(obj)$(BOARD)-spl.bin
+else
 $(obj)$(BOARD)-spl.bin: $(obj)u-boot-spl.bin
 	$(OBJTREE)/tools/mk$(BOARD)spl \
 		$(obj)u-boot-spl.bin $(obj)$(BOARD)-spl.bin
+endif
 endif
 
 $(obj)u-boot-spl.bin:	$(obj)u-boot-spl
@@ -129,7 +135,7 @@ GEN_UBOOT = \
 	UNDEF_SYM=`$(OBJDUMP) -x $(LIBS) | \
 	sed  -n -e 's/.*\($(SYM_PREFIX)__u_boot_cmd_.*\)/-u\1/p'|sort|uniq`;\
 	cd $(obj) && $(LD) $(LDFLAGS) $(LDFLAGS_$(@F)) $$UNDEF_SYM $(__START) \
-		--start-group $(__LIBS) --end-group $(PLATFORM_LIBS) \
+		--start-group $(__LIBS) --end-group $(PLATFORM_SPL_LIBS) \
 		-Map u-boot-spl.map -o u-boot-spl
 
 $(obj)u-boot-spl:	depend $(START) $(LIBS) $(obj)u-boot-spl.lds

@@ -68,7 +68,15 @@ BIN_FILES-$(CONFIG_CMD_LOADS) += img2srec$(SFX)
 BIN_FILES-$(CONFIG_XWAY_SWAP_BYTES) += xway-swap-bytes$(SFX)
 BIN_FILES-y += mkenvimage$(SFX)
 BIN_FILES-y += mkimage$(SFX)
-BIN_FILES-$(CONFIG_SMDK5250) += mksmdk5250spl$(SFX)
+BIN_FILES-$(CONFIG_MACH_SMDK5250) += mksmdk5250spl$(SFX)
+BIN_FILES-$(CONFIG_MACH_SMDK5412) += mksmdk5412spl$(SFX)
+BIN_FILES-$(CONFIG_SMDK5410) += mksmdk5410spl$(SFX)
+BIN_FILES-$(CONFIG_EXYNOS4412) += mksmdk4x12spl$(SFX)
+BIN_FILES-$(CONFIG_EXYNOS4212) += mksmdk4x12spl$(SFX)
+BIN_FILES-$(CONFIG_CPU_EXYNOS3250) += mkespresso3250spl15kb$(SFX)
+BIN_FILES-$(CONFIG_CPU_EXYNOS4415) += mkxyref4415spl15kb$(SFX)
+BIN_FILES-$(CONFIG_CPU_EXYNOS5260) += mkxyref5260spl15kb$(SFX)
+BIN_FILES-$(CONFIG_CPU_EXYNOS5430) += mkxyref5430spl15kb$(SFX)
 BIN_FILES-$(CONFIG_MX28) += mxsboot$(SFX)
 BIN_FILES-$(CONFIG_NETCONSOLE) += ncb$(SFX)
 BIN_FILES-$(CONFIG_SHA1_CHECK_UB_IMG) += ubsha1$(SFX)
@@ -96,7 +104,15 @@ NOPED_OBJ_FILES-y += imximage.o
 NOPED_OBJ_FILES-y += omapimage.o
 NOPED_OBJ_FILES-y += mkenvimage.o
 NOPED_OBJ_FILES-y += mkimage.o
-OBJ_FILES-$(CONFIG_SMDK5250) += mkexynosspl.o
+OBJ_FILES-$(CONFIG_MACH_SMDK5250) += mkexynosspl.o
+OBJ_FILES-$(CONFIG_MACH_SMDK5412) += mkexynosspl.o
+OBJ_FILES-$(CONFIG_SMDK5410) += mkexynosspl.o
+OBJ_FILES-$(CONFIG_EXYNOS4412) += mkexynosspl.o
+OBJ_FILES-$(CONFIG_EXYNOS4212) += mkexynosspl.o
+OBJ_FILES-$(CONFIG_CPU_EXYNOS3250) += mkexynosspl15kb.o
+OBJ_FILES-$(CONFIG_CPU_EXYNOS4415) += mkexynosspl15kb.o
+OBJ_FILES-$(CONFIG_CPU_EXYNOS5260) += mkexynosspl15kb.o
+OBJ_FILES-$(CONFIG_CPU_EXYNOS5430) += mkexynosspl15kb.o
 OBJ_FILES-$(CONFIG_MX28) += mxsboot.o
 OBJ_FILES-$(CONFIG_NETCONSOLE) += ncb.o
 NOPED_OBJ_FILES-y += os_support.o
@@ -219,6 +235,10 @@ $(obj)mkimage$(SFX):	$(obj)aisimage.o \
 	$(HOSTSTRIP) $@
 
 $(obj)mk$(BOARD)spl$(SFX):	$(obj)mkexynosspl.o
+	$(HOSTCC) $(HOSTCFLAGS) $(HOSTLDFLAGS) -o $@ $^
+	$(HOSTSTRIP) $@
+
+$(obj)mk$(BOARD)spl15kb$(SFX):  $(obj)mkexynosspl15kb.o
 	$(HOSTCC) $(HOSTCFLAGS) $(HOSTLDFLAGS) -o $@ $^
 	$(HOSTSTRIP) $@
 

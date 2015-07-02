@@ -100,7 +100,9 @@ struct exynos5_gpio_part1 {
 	struct s5p_gpio_bank y4;
 	struct s5p_gpio_bank y5;
 	struct s5p_gpio_bank y6;
-	struct s5p_gpio_bank res1[0x980];
+	struct s5p_gpio_bank res1[0x3];
+	struct s5p_gpio_bank c4;
+	struct s5p_gpio_bank res2[0x48];
 	struct s5p_gpio_bank x0;
 	struct s5p_gpio_bank x1;
 	struct s5p_gpio_bank x2;
@@ -132,6 +134,178 @@ struct exynos5_gpio_part4 {
 	struct s5p_gpio_bank z;
 };
 
+struct exynos3_gpio_part1 {
+	struct s5p_gpio_bank a0;
+	struct s5p_gpio_bank a1;
+	struct s5p_gpio_bank b;
+	struct s5p_gpio_bank c0;
+	struct s5p_gpio_bank c1;
+	struct s5p_gpio_bank d0;
+	struct s5p_gpio_bank d1;
+};
+struct exynos3_gpio_part2 {
+	struct s5p_gpio_bank k0;
+	struct s5p_gpio_bank k1;
+	struct s5p_gpio_bank k2;
+	struct s5p_gpio_bank res1;//In fact MMC3 channel didn't use
+	struct s5p_gpio_bank l0;
+	struct s5p_gpio_bank res2[2];
+	struct s5p_gpio_bank e0;
+	struct s5p_gpio_bank e1;
+	struct s5p_gpio_bank res3;
+	struct s5p_gpio_bank e2;
+	struct s5p_gpio_bank res4[0x6];
+	struct s5p_gpio_bank M0;
+	struct s5p_gpio_bank M1;
+	struct s5p_gpio_bank M2;
+	struct s5p_gpio_bank M3;
+	struct s5p_gpio_bank M4;
+	struct s5p_gpio_bank res5[0x4a];
+	struct s5p_gpio_bank x0;
+	struct s5p_gpio_bank x1;
+	struct s5p_gpio_bank x2;
+	struct s5p_gpio_bank x3;
+};
+
+struct exynos5412_gpio_part2 {
+	struct s5p_gpio_bank c0;
+	struct s5p_gpio_bank c1;
+	struct s5p_gpio_bank c2;
+	struct s5p_gpio_bank c3;
+	struct s5p_gpio_bank c4;
+	struct s5p_gpio_bank d1;
+};
+
+struct exynos5412_gpio_part3 {
+	struct s5p_gpio_bank h0;
+	struct s5p_gpio_bank y7;
+	struct s5p_gpio_bank f0;
+	struct s5p_gpio_bank e0;
+	struct s5p_gpio_bank e1;
+	struct s5p_gpio_bank f1;
+	struct s5p_gpio_bank g0;
+	struct s5p_gpio_bank g1;
+	struct s5p_gpio_bank g2;
+};
+
+struct exynos5412_gpio_part4 {
+	struct s5p_gpio_bank y0;
+	struct s5p_gpio_bank y1;
+	struct s5p_gpio_bank y5;
+	struct s5p_gpio_bank y6;
+	struct s5p_gpio_bank y2;
+	struct s5p_gpio_bank y3;
+	struct s5p_gpio_bank y4;
+	struct s5p_gpio_bank a0;
+	struct s5p_gpio_bank a1;
+	struct s5p_gpio_bank a2;
+	struct s5p_gpio_bank b0;
+	struct s5p_gpio_bank b1;
+	struct s5p_gpio_bank b2;
+	struct s5p_gpio_bank b3;
+	struct s5p_gpio_bank b4;
+};
+
+struct exynos5260_gpio_part1 {
+	struct s5p_gpio_bank a0;
+	struct s5p_gpio_bank a1;
+	struct s5p_gpio_bank a2;
+	struct s5p_gpio_bank b0;
+	struct s5p_gpio_bank b1;
+	struct s5p_gpio_bank b2;
+	struct s5p_gpio_bank b3;
+	struct s5p_gpio_bank b4;
+	struct s5p_gpio_bank b5;
+	struct s5p_gpio_bank d0;
+	struct s5p_gpio_bank d1;
+	struct s5p_gpio_bank d2;
+	struct s5p_gpio_bank e0;
+	struct s5p_gpio_bank e1;
+	struct s5p_gpio_bank f0;
+	struct s5p_gpio_bank f1;
+	struct s5p_gpio_bank k0;
+	unsigned char res1[0x9e0];
+	struct s5p_gpio_bank x0;
+	struct s5p_gpio_bank x1;
+	struct s5p_gpio_bank x2;
+	struct s5p_gpio_bank x3;
+};
+
+struct exynos5260_gpio_part2 {
+	struct s5p_gpio_bank c0;
+	struct s5p_gpio_bank c1;
+	struct s5p_gpio_bank c2;
+	struct s5p_gpio_bank c3;
+	struct s5p_gpio_bank c4;
+};
+
+struct exynos5260_gpio_part3 {
+	struct s5p_gpio_bank z0;
+	struct s5p_gpio_bank z1;
+};
+
+/* exynos5430 */
+struct exynos5430_gpio_alive {
+	struct s5p_gpio_bank a0;
+	struct s5p_gpio_bank a1;
+	struct s5p_gpio_bank a2;
+	struct s5p_gpio_bank a3;
+};
+
+struct exynos5430_gpio_aud {
+	struct s5p_gpio_bank z0;
+	struct s5p_gpio_bank z1;
+};
+
+struct exynos5430_gpio_cpif {
+	struct s5p_gpio_bank v6;
+};
+
+struct exynos5430_gpio_fsys {
+	struct s5p_gpio_bank h1;
+	struct s5p_gpio_bank r4;
+	struct s5p_gpio_bank r0;
+	struct s5p_gpio_bank r1;
+	struct s5p_gpio_bank r2;
+	struct s5p_gpio_bank r3;
+};
+
+struct exynos5430_gpio_nfc {
+	struct s5p_gpio_bank j0;
+};
+
+struct exynos5430_gpio_peric {
+	struct s5p_gpio_bank v7;
+	struct s5p_gpio_bank b0;
+	struct s5p_gpio_bank c0;
+	struct s5p_gpio_bank c1;
+	struct s5p_gpio_bank c2;
+	struct s5p_gpio_bank c3;
+	struct s5p_gpio_bank g0;
+	struct s5p_gpio_bank d0;
+	struct s5p_gpio_bank d1;
+	struct s5p_gpio_bank d2;
+	struct s5p_gpio_bank d4;
+	struct s5p_gpio_bank d5;
+	struct s5p_gpio_bank d8;
+	struct s5p_gpio_bank d6;
+	struct s5p_gpio_bank d7;
+	struct s5p_gpio_bank f0;
+	struct s5p_gpio_bank f1;
+	struct s5p_gpio_bank f2;
+	struct s5p_gpio_bank f3;
+	struct s5p_gpio_bank f4;
+	struct s5p_gpio_bank f5;
+	unsigned char res1[0x3c];
+	struct s5p_gpio_bank g1;
+	struct s5p_gpio_bank g2;
+	struct s5p_gpio_bank g3;
+};
+
+struct exynos5430_gpio_touch {
+	struct s5p_gpio_bank j1;
+};
+
 /* functions */
 void s5p_gpio_cfg_pin(struct s5p_gpio_bank *bank, int gpio, int cfg);
 void s5p_gpio_direction_output(struct s5p_gpio_bank *bank, int gpio, int en);
@@ -160,6 +334,80 @@ void s5p_gpio_set_rate(struct s5p_gpio_bank *bank, int gpio, int mode);
 	    - EXYNOS4_GPIO_PART2_BASE) / sizeof(struct s5p_gpio_bank)) \
 	  * GPIO_PER_BANK) + pin) + EXYNOS4_GPIO_PART1_MAX)
 
+#if defined(CONFIG_CPU_EXYNOS5260)
+#define exynos5_gpio_part1_get_nr(bank, pin) \
+	((((((unsigned int) &(((struct exynos5260_gpio_part1 *) \
+			       EXYNOS5260_GPIO_PART1_BASE)->bank)) \
+	    - EXYNOS5260_GPIO_PART1_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin)
+
+#define EXYNOS5_GPIO_PART1_MAX ((sizeof(struct exynos5260_gpio_part1) \
+			    / sizeof(struct s5p_gpio_bank)) * GPIO_PER_BANK)
+
+#define exynos5_gpio_part2_get_nr(bank, pin) \
+	(((((((unsigned int) &(((struct exynos5260_gpio_part2 *) \
+				EXYNOS5260_GPIO_PART2_BASE)->bank)) \
+	    - EXYNOS5260_GPIO_PART2_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin) + EXYNOS5260_GPIO_PART1_MAX)
+
+#define EXYNOS5_GPIO_PART2_MAX ((sizeof(struct exynos5_gpio_part2) \
+			    / sizeof(struct s5p_gpio_bank)) * GPIO_PER_BANK)
+
+#define exynos5_gpio_part3_get_nr(bank, pin) \
+	(((((((unsigned int) &(((struct exynos5260_gpio_part3 *) \
+				EXYNOS5260_GPIO_PART3_BASE)->bank)) \
+	    - EXYNOS5260_GPIO_PART3_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin) + EXYNOS5260_GPIO_PART2_MAX)
+
+#elif defined(CONFIG_CPU_EXYNOS5430)
+#define exynos5_gpio_alive_get_nr(bank, pin) \
+	((((((unsigned int) &(((struct exynos5430_gpio_alive *) \
+			       EXYNOS5430_GPIO_ALIVE_BASE)->bank)) \
+	    - EXYNOS5430_GPIO_ALIVE_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin)
+
+#define exynos5_gpio_aud_get_nr(bank, pin) \
+	((((((unsigned int) &(((struct exynos5430_gpio_aud *) \
+			       EXYNOS5430_GPIO_AUD_BASE)->bank)) \
+	    - EXYNOS5430_GPIO_AUD_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin)
+
+#define exynos5_gpio_cpif_get_nr(bank, pin) \
+	((((((unsigned int) &(((struct exynos5430_gpio_cpif *) \
+			       EXYNOS5430_GPIO_CPIF_BASE)->bank)) \
+	    - EXYNOS5430_GPIO_CPIF_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin)
+
+#define exynos5_gpio_fsys_get_nr(bank, pin) \
+	((((((unsigned int) &(((struct exynos5430_gpio_fsys *) \
+			       EXYNOS5430_GPIO_FSYS_BASE)->bank)) \
+	    - EXYNOS5430_GPIO_FSYS_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin)
+
+#define exynos5_gpio_nfc_get_nr(bank, pin) \
+	((((((unsigned int) &(((struct exynos5430_gpio_nfc *) \
+			       EXYNOS5430_GPIO_NFC_BASE)->bank)) \
+	    - EXYNOS5430_GPIO_NFC_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin)
+
+#define exynos5_gpio_peric_get_nr(bank, pin) \
+	((((((unsigned int) &(((struct exynos5430_gpio_peric *) \
+			       EXYNOS5430_GPIO_PERIC_BASE)->bank)) \
+	    - EXYNOS5430_GPIO_PERIC_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin)
+
+#define exynos5_gpio_touch_get_nr(bank, pin) \
+	((((((unsigned int) &(((struct exynos5430_gpio_touch *) \
+			       EXYNOS5430_GPIO_TOUCH_BASE)->bank)) \
+	    - EXYNOS5430_GPIO_TOUCH_BASE) / sizeof(struct s5p_gpio_bank)) \
+	  * GPIO_PER_BANK) + pin)
+
+#define EXYNOS5430_GPIO_PERIC_MAX ((sizeof(struct exynos5430_gpio_peric) \
+			    / sizeof(struct s5p_gpio_bank)) * GPIO_PER_BANK)
+
+#define EXYNOS5430_GPIO_FSYS_MAX ((sizeof(struct exynos5430_gpio_fsys) \
+			    / sizeof(struct s5p_gpio_bank)) * GPIO_PER_BANK)
+#else /* CONFIG_CPU_EXYNOS5430 */
 #define exynos5_gpio_part1_get_nr(bank, pin) \
 	((((((unsigned int) &(((struct exynos5_gpio_part1 *) \
 			       EXYNOS5_GPIO_PART1_BASE)->bank)) \
@@ -183,17 +431,33 @@ void s5p_gpio_set_rate(struct s5p_gpio_bank *bank, int gpio, int mode);
 				EXYNOS5_GPIO_PART3_BASE)->bank)) \
 	    - EXYNOS5_GPIO_PART3_BASE) / sizeof(struct s5p_gpio_bank)) \
 	  * GPIO_PER_BANK) + pin) + EXYNOS5_GPIO_PART2_MAX)
+#endif /* CONFIG_CPU_EXYNOS5260 */
 
 static inline unsigned int s5p_gpio_base(int nr)
 {
 	if (cpu_is_exynos5()) {
+#if defined(CONFIG_CPU_EXYNOS5430)
+		if (nr < EXYNOS5430_GPIO_PERIC_MAX)
+			return EXYNOS5430_GPIO_PERIC_BASE;
+		else if (nr < EXYNOS5430_GPIO_FSYS_MAX)
+			return EXYNOS5430_GPIO_FSYS_BASE;
+		else
+			return EXYNOS5430_GPIO_ALIVE_BASE;
+#elif defined(CONFIG_CPU_EXYNOS5260)
+		if (nr < EXYNOS5_GPIO_PART1_MAX)
+			return EXYNOS5260_GPIO_PART1_BASE;
+		else if (nr < EXYNOS5_GPIO_PART2_MAX)
+			return EXYNOS5260_GPIO_PART2_BASE;
+		else
+			return EXYNOS5260_GPIO_PART3_BASE;
+#else
 		if (nr < EXYNOS5_GPIO_PART1_MAX)
 			return EXYNOS5_GPIO_PART1_BASE;
 		else if (nr < EXYNOS5_GPIO_PART2_MAX)
 			return EXYNOS5_GPIO_PART2_BASE;
 		else
 			return EXYNOS5_GPIO_PART3_BASE;
-
+#endif /* CONFIG_CPU_EXYNOS5260 */
 	} else if (cpu_is_exynos4()) {
 		if (nr < EXYNOS4_GPIO_PART1_MAX)
 			return EXYNOS4_GPIO_PART1_BASE;
