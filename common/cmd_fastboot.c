@@ -1733,6 +1733,7 @@ static int set_partition_table_sdmmc()
 	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD;
 	pcount++;
 #endif
+#ifdef CONFIG_ANDROID_PARTITIONS
 	/* System */
 	get_mmc_part_info(dev_num, 2, &start, &count, &pid);
 	if (pid != 0x83)
@@ -1772,6 +1773,7 @@ static int set_partition_table_sdmmc()
 	ptable[pcount].length = count * CFG_FASTBOOT_SDMMC_BLOCKSIZE;
 	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MMC_CMD;
 	pcount++;
+#endif	/* End of CONFIG_ANDROID_PARTITIONS */
 
 #if 1 // Debug
 	fastboot_flash_dump_ptn();
