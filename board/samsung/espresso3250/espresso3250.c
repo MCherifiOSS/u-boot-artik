@@ -175,9 +175,11 @@ int board_eth_init(bd_t *bis)
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
-
+#ifdef CONFIG_MACH_ARTIK5
+	printf("\nBoard: ARTIK5\n");
+#else
 	printf("\nBoard: ESPRESSO3250\n");
-
+#endif
 	return 0;
 }
 #endif
