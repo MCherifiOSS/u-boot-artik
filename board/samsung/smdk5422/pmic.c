@@ -297,7 +297,7 @@ void pmic_init(void)
 	IIC0_EWrite(S2MPS11_ADDR, 0x51, 0xD4);
 #endif
 #endif
-#ifdef CONFIG_MACH_XYREF5422
+#if defined(CONFIG_MACH_XYREF5422) || defined(CONFIG_MACH_ARTIK10)
 	IIC0_EWrite(S2MPS11_ADDR, 0x4C, 0xD4);
 	IIC0_EWrite(S2MPS11_ADDR, 0x54, 0xE8);
 	IIC0_EWrite(S2MPS11_ADDR, 0x4E, 0xE8);

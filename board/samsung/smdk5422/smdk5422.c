@@ -289,6 +289,8 @@ int checkboard(void)
 	printf("\nBoard: UNIVERSAL5422\n");
 #elif defined(CONFIG_MACH_XYREF5422)
 	printf("\nBoard: XYREF5422\n");
+#elif defined(CONFIG_MACH_ARTIK10)
+	printf("\nBoard: ARTIK10\n");
 #else
 	printf("\nBoard: SMDK5422\n");
 #endif
