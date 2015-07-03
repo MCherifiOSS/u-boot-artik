@@ -12,6 +12,7 @@
 #include <common.h>
 #include <command.h>
 #include <mmc.h>
+#include <div64.h>
 
 #define		BLOCK_SIZE			512
 #define		BLOCK_END			0xFFFFFFFF
@@ -64,9 +65,10 @@ typedef struct
 int calc_unit(unsigned long long length, SDInfo sdInfo)
 {
 	if (sdInfo.addr_mode == CHS_MODE)
-		return ( (length / BLOCK_SIZE / sdInfo.unit + 1 ) * sdInfo.unit);
+		return ( (do_div(length, (BLOCK_SIZE / sdInfo.unit)) + 1 )
+				* sdInfo.unit);
 	else
-		return ( (length / BLOCK_SIZE) );
+		return ( (do_div(length, BLOCK_SIZE)) );
 }
 
 /////////////////////////////////////////////////////////////////
@@ -313,7 +315,7 @@ int get_mmc_block_count(char *device_name)
 		return -1;
 	}
 
-	block_count = mmc->capacity / mmc->read_bl_len;
+	block_count = do_div(mmc->capacity, mmc->read_bl_len);
 
 //	printf("block_count = %d\n", block_count);
 	return block_count;

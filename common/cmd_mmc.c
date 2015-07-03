@@ -24,6 +24,7 @@
 #include <common.h>
 #include <command.h>
 #include <mmc.h>
+#include <div64.h>
 
 static int curr_device = -1;
 #ifndef CONFIG_GENERIC_MMC
@@ -324,10 +325,12 @@ int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			} else if (strcmp(argv[2], "user") == 0) {
 				part = 1;
 				/* Read User partition size. */
-				count = mmc->capacity / mmc->read_bl_len;
+				count = do_div(mmc->capacity,
+						mmc->read_bl_len);
 			} else {
 				part = 1;
-				count = mmc->capacity / mmc->read_bl_len;
+				count = do_div(mmc->capacity,
+						mmc->read_bl_len);
 				printf("Default erase user partition\n");
 			}
 

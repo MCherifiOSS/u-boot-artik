@@ -16,6 +16,7 @@
 #include <asm/errno.h>
 #include <decompress_ext4.h>
 #include <mmc.h>
+#include <div64.h>
 
 #define SECTOR_BITS		9	/* 512B */
 
@@ -57,8 +58,9 @@ int check_compress_ext4(char *img_base, unsigned long long parti_size) {
 
 	if ((parti_size/file_header->block_size)  < file_header->total_blocks) {
 		printf("Invalid Volume Size! Image is bigger than partition size!\n");
-		printf("partion size %lld , image size %d \n",
-			(parti_size/file_header->block_size), file_header->total_blocks);
+		printf("partion size %ld , image size %d \n",
+			(do_div(parti_size, file_header->block_size)),
+			file_header->total_blocks);
 		while(1);
 	}
 
