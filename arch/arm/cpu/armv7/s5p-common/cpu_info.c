@@ -86,8 +86,9 @@ int print_cpuinfo(void)
 	char buf[32];
 
 	if (s5p_cpu_id == 0x4412 || s5p_cpu_id == 0x4212 || s5p_cpu_id == 0x3250) {
-		printf("CPU: %s%X [Samsung SOC on SMP Platform Base on ARM CortexA9]\n",
-			s5p_get_cpu_name(), s5p_cpu_id);
+		printf("CPU: %s%X [Samsung SOC on SMP Platform Base on ARM CortexA%d]\n",
+			s5p_get_cpu_name(), s5p_cpu_id,
+			(s5p_cpu_id == 0x3250) ? 7 : 9);
 		printf("APLL = %ldMHz, MPLL = %ldMHz\n",
 			get_pll_clk(APLL)/1000000, get_pll_clk(MPLL)/1000000);
 	}
