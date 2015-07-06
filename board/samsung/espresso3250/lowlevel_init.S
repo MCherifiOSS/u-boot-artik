@@ -129,6 +129,21 @@ pmic_gpio_init:
 	mov	r1, #0x0
 	str	r1, [r0]
 
+#ifdef CONFIG_MACH_ARTIK5
+	/* Set PMIC WRSTBI(GPE1_2) to Output */
+	ldr	r0, =(0x11000140)
+	ldr	r1, [r0]
+	bic	r2, r1, #0xF00
+	and	r1, r1, r2
+	orr	r1, r1, #0x100
+	str	r1, [r0]
+
+	/* Set PMIC WRSTBI(GPE1_2) to High */
+	ldr	r0, =(0x11000144)
+	ldr	r1, [r0]
+	orr	r1, r1, #0x4
+	str	r1, [r0]
+#else
 	/* Set PMIC WRSTBI(GPE1_1) to Output */
 	ldr	r0, =(0x11000140)
 	ldr	r1, [r0]
@@ -142,6 +157,7 @@ pmic_gpio_init:
 	ldr	r1, [r0]
 	orr	r1, r1, #0x2
 	str	r1, [r0]
+#endif
 	mov	pc, lr
 
 read_om:
