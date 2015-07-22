@@ -40,6 +40,10 @@
 #endif
 #endif
 
+#ifdef CONFIG_EXYNOS_THERMAL
+#include "tmu.h"
+#endif
+
 #define DEBOUNCE_DELAY	10000
 
 #define PRODUCT_ID	(0x10000000 + 0x000)
@@ -407,6 +411,31 @@ int board_late_init(void)
 {
 	struct exynos5_power *pmu = (struct exynos5_power *)EXYNOS5_POWER_BASE;
 	unsigned int rst_stat = 0;
+
+#ifdef CONFIG_EXYNOS_THERMAL
+	int temp, ret;
+	int stable_temp = CONFIG_EXYNOS_THERMAL_STABLE_TEMP;
+
+	ret = exynos_tmu_probe();
+	if (ret)
+		printf("failed to probe tmu\n");
+	else {
+		temp = exynos_tmu_read_max_temp();
+		if (temp > stable_temp) {
+			/* Set cpu clock to minimal */
+			set_kfc_clock(1);
+			while (temp > stable_temp) {
+				printf("Wait until temp:%d falls to %d\n",
+						temp, stable_temp);
+				mdelay(1000);
+				temp = exynos_tmu_read_max_temp();
+			}
+			/* Restore cpu clock to 800Mhz */
+			set_kfc_clock(0);
+		}
+		exynos_tmu_shutdown();
+	}
+#endif
 
 	rst_stat = readl(&pmu->rst_stat);
 	printf("rst_stat : 0x%x\n", rst_stat);
