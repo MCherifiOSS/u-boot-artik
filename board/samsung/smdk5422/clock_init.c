@@ -38,6 +38,22 @@ u32 gEvtNum;
 u32 g_nMEMCLK;
 #endif
 
+void set_kfc_clock(int min)
+{
+	struct exynos5420_clock *clk =
+		(struct exynos5420_clock *)EXYNOS5_CLOCK_BASE;
+
+#ifdef CONFIG_CPU_EXYNOS5422_EVT0
+	if (min) {
+		writel(0x03300720, &clk->div_kfc0);
+		writel(0x80C80303, &clk->kpll_con0);
+	} else {
+		writel(0x03500720, &clk->div_kfc0);
+		writel(0x80C80301, &clk->kpll_con0);
+	}
+#endif
+}
+
 void system_clock_init()
 {
 	struct exynos5420_clock *clk =

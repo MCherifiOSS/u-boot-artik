@@ -59,4 +59,5 @@ void sdelay(unsigned long);
 void mem_ctrl_init(void);
 void system_clock_init(void);
 extern unsigned int second_boot_info;
+extern void set_kfc_clock(int min);
 #endif
