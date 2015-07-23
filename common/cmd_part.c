@@ -35,6 +35,7 @@
 #include <command.h>
 #include <part.h>
 #include <vsprintf.h>
+#include <stdbool.h>
 
 #ifndef CONFIG_PARTITION_UUIDS
 #error CONFIG_PARTITION_UUIDS must be enabled for CONFIG_CMD_PART to be enabled
