@@ -301,7 +301,7 @@ LIBS += arch/powerpc/cpu/mpc8xxx/lib8xxx.o
 endif
 LIBS += drivers/rtc/librtc.o
 LIBS += drivers/serial/libserial.o
-LIBS += drivers/usb/dwc3/
+LIBS += drivers/usb/dwc3/libdwc3.o
 ifeq ($(CONFIG_GENERIC_LPC_TPM),y)
 LIBS += drivers/tpm/libtpm.o
 endif
