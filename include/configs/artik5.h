@@ -175,7 +175,7 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_MMC
-#define CONFIG_CMD_EXT2
+#define CONFIG_CMD_EXT4
 #define CONFIG_CMD_FAT
 
 #define CONFIG_CMD_MOVI
@@ -226,7 +226,7 @@
 #define CFG_FASTBOOT_ADDR_RAMDISK               (0x41000000)
 #define CFG_FASTBOOT_PAGESIZE                   (2048)  // Page size of booting device
 #define CFG_FASTBOOT_SDMMC_BLOCKSIZE            (512)   // Block size of sdmmc
-#undef CONFIG_EFI_PARTITION
+
 #ifdef CONFIG_EFI_PARTITION
 #define CONFIG_PRI_GPT_SIZE	(34 * 512)
 #define CONFIG_SEC_GPT_SIZE	(33 * 512)
@@ -252,7 +252,7 @@
 				"movi read kernel 0 40008000;movi read rootfs 0 41000000 100000;bootz 40008000 41000000"
 #else
 /*#define CONFIG_BOOTCOMMAND	"movi read kernel 0 40008000;movi read rootfs 0 41000000 200000;bootz 40008000 41000000"*/
-#define CONFIG_BOOTCOMMAND	"movi read kernel 0 40008000;movi read rootfs 0 41000000 1000000;bootz 40008000 41000000" 	/* nermy - for ramdisk */
+#define CONFIG_BOOTCOMMAND	"movi read kernel 0 40008000;movi read rootfs 0 41000000 1000000;bootz 40008000 41000000"
 #endif
 
 #define CONFIG_BOOTCOMMAND_VIA_SCRIPT "movi init 1;fatload mmc 1 0x40000000 booting_script;source 0x40000000"
@@ -385,21 +385,50 @@
 /* Configuration of ENV size on mmc */
 #define CONFIG_ENV_SIZE		(16 << 10)	/* 16 KB */
 
-#define CONFIG_BOOT_LOGO
-#define CONFIG_CHARGER_LOGO
-
 #include <asm/arch/movi_partition.h>
 
 /* Configuration of ROOTFS_ATAGS */
 #define CONFIG_ROOTFS_ATAGS
 #ifdef CONFIG_ROOTFS_ATAGS
-#define CONFIG_EXTRA_ENV_SETTINGS       "rootfslen= 100000"
+#define CONFIG_ROOTFS_LEN	100000
 #endif
 /* Configuration for Partition */
 #define CONFIG_DOS_PARTITION
 #define CONFIG_NVDATA_PARTITION
 #define CFG_PARTITION_START     0x6400000
 #define CONFIG_IRAM_STACK	0x02060000
+
+/* GPT */
+#define CONFIG_RANDOM_UUID
+#define CONFIG_EFI_PARTITION
+#define CONFIG_PARTITION_UUIDS
+#define CONFIG_CMD_GPT
+#define CONFIG_CMD_PART
+
+#define CONFIG_KERNEL_OFFSET	1
+#define CONFIG_KERNEL_PART_SIZE		8
+#define CONFIG_RAMDISK_PART_SIZE	16
+#define CONFIG_ROOTFS_PART_SIZE		3072
+#define CONFIG_RECOVERY_PARTITION
+
+#ifdef CONFIG_RECOVERY_PARTITION
+#define CONFIG_ROOTFS_OFFSET		49
+#else
+#define CONFIG_ROOTFS_OFFSET		25
+#endif
+
+#define PARTS_DEFAULT \
+	"uuid_disk=${uuid_gpt_disk};" \
+	"name=rootfs,start=" __stringify(CONFIG_ROOTFS_OFFSET) "MiB,size=" \
+		__stringify(CONFIG_ROOTFS_PART_SIZE) "MiB,uuid=${uuid_gpt_rootfs};" \
+	"name=data,size=-,uuid=${uuid_gpt_data}\0"
+
+#define CONFIG_EXTRA_ENV_SETTINGS	\
+	"console=" CONFIG_DEFAULT_CONSOLE \
+	"consoleon=set console console=" CONFIG_DEFAULT_CONSOLE "; saveenv; reset\0" \
+	"consoleoff=set console console=ram; saveenv; reset\0" \
+	"rootfslen=" __stringify(CONFIG_ROOTFS_LEN) "\0"	\
+	"partitions=" PARTS_DEFAULT
 
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR - 0x1000000)
 
