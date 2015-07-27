@@ -2195,11 +2195,12 @@ void fastboot_flash_dump_ptn(void)
 #else
 		printf("ptn %d name='%s' ", n, ptn->name);
 		if (n == 0 || ptn->start)
-			printf("start=0x%X ", ptn->start);
+			printf("start=0x%llx ", ptn->start);
 		else
 			printf("start=N/A ");
 		if (ptn->length)
-			printf("len=0x%X(~%dKB) ", ptn->length, ptn->length>>10);
+			printf("len=0x%llx(~%lldKB) ", ptn->length,
+					ptn->length >> 10);
 		else
 			printf("len=N/A ");
 
