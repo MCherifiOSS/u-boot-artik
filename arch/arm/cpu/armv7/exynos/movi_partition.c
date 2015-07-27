@@ -88,7 +88,11 @@ int init_raw_area_table(block_dev_desc_t * dev_desc, int location)
 	part_num++;
 
 	/* image 5 should be kernel */
+#ifdef CONFIG_KERNEL_OFFSET
+	image[part_num].start_blk = CONFIG_KERNEL_OFFSET * 2048;
+#else
 	image[part_num].start_blk = image[part_num - 1].start_blk + MOVI_ENV_BLKCNT;
+#endif
 	image[part_num].used_blk = MOVI_ZIMAGE_BLKCNT;
 	image[part_num].size = PART_SIZE_KERNEL;
 	image[part_num].attribute = 0x5;
