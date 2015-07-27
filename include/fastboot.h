@@ -210,6 +210,9 @@ struct fastboot_ptentry
 /* Use movi command to read/write this partition */
 #define FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD           0x00020000
 
+/* Download and imediately flash this partition */
+#define FASTBOOT_PTENTRY_FLAGS_FLASH_CHUNK            0x00040000
+
 /* Status values */
 #define FASTBOOT_OK			0
 #define FASTBOOT_ERROR			-1

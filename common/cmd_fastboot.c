@@ -157,6 +157,11 @@ static unsigned int download_bytes;
 //static unsigned int download_bytes_unpadded;
 static unsigned int download_error;
 
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+#define FASTBOOT_GETVAR_PART_TYPE	"partition-type"
+static fastboot_ptentry *download_ptn;
+#endif /* CONFIG_FASTBOOT_FLASH_CHUNK */
+
 /* To support the Android-style naming of flash */
 #define MAX_PTN 16
 static fastboot_ptentry ptable[MAX_PTN];
@@ -871,19 +876,28 @@ static int process_cmd_getvar(const char *cmdbuf, char *response)
 
 	if (!strcmp(cmdbuf + 7, "version"))
 		strcpy(response + 4, FASTBOOT_VERSION);
-	else if (!strcmp(cmdbuf + 7, "product"))
+	else if (!strcmp(cmdbuf + 7, "product")) {
 		if (interface.product_name)
 			strcpy(response + 4, interface.product_name);
-	else if (!strcmp(cmdbuf + 7, "serialno"))
+	} else if (!strcmp(cmdbuf + 7, "serialno")) {
 		if (interface.serial_no)
 			strcpy(response + 4, interface.serial_no);
-	else if (!strcmp(cmdbuf + 7, "downloadsize"))
+	} else if (!strcmp(cmdbuf + 7, "downloadsize")) {
 		if (interface.transfer_buffer_size)
 			sprintf(response + 4, "%08x",
 					interface.transfer_buffer_size);
-	else
-		fastboot_getvar(cmdbuf + 7, response + 4);
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+	} else if (!strncmp(cmdbuf + 7, FASTBOOT_GETVAR_PART_TYPE,
+				strlen(FASTBOOT_GETVAR_PART_TYPE))) {
+		download_ptn = fastboot_flash_find_ptn(cmdbuf + 7 +
+				strlen(FASTBOOT_GETVAR_PART_TYPE) + 1);
 
+		if (download_ptn && !(download_ptn->flags &
+				FASTBOOT_PTENTRY_FLAGS_FLASH_CHUNK))
+			download_ptn = NULL;
+#endif
+	} else
+		fastboot_getvar(cmdbuf + 7, response + 4);
 	return 0;
 }
 
@@ -1637,6 +1651,10 @@ static int get_mmc_partition_tables()
 		ptable[pcount].start = info.start * info.blksz;
 		ptable[pcount].length = info.size * info.blksz;
 		ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MMC_CMD;
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+		ptable[pcount].flags |= FASTBOOT_PTENTRY_FLAGS_FLASH_CHUNK;
+#endif
+
 		pcount++;
 	}
 
