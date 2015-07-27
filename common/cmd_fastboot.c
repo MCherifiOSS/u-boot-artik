@@ -1379,7 +1379,7 @@ static int rx_handler (const unsigned char *buffer, unsigned int buffer_size)
 		   Reboot the board. */
 		if (memcmp(cmdbuf, "reboot", 6) == 0) {
 			ret = process_cmd_reboot(cmdbuf, response);
-			return ret;
+			goto ret_free;
 		} else if (memcmp(cmdbuf, "getvar:", 7) == 0)
 			ret = process_cmd_getvar(cmdbuf, response);
 		else if (memcmp(cmdbuf, "erase:", 6) == 0)
@@ -1404,6 +1404,8 @@ static int rx_handler (const unsigned char *buffer, unsigned int buffer_size)
 #endif
 	} /* End of command */
 
+ret_free:
+	free(response);
 	return ret;
 }
 
