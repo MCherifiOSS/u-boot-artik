@@ -506,7 +506,8 @@ static int write_to_ptn(struct fastboot_ptentry *ptn, unsigned int addr, unsigne
 #else
 #define	DEV_NUM 0
 #endif
-static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr, unsigned int size)
+static int write_buffer_sdmmc(unsigned int addr, unsigned int base,
+		unsigned int len, int is_sparse)
 {
 	int ret = 1;
 	char cmd[32], device[32], part[32], part2[32];
@@ -520,8 +521,115 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr, u
 #endif
 	struct mmc *mmc;
 
-	if ((ptn->length != 0) && (size > ptn->length))
-	{
+	argv[1] = cmd;
+	sprintf(cmd, "write");
+
+	if (!is_sparse) {
+		argv[2] = device;
+		argv[3] = buffer;
+		argv[4] = start;
+		argv[5] = length;
+
+		sprintf(device, "mmc %d", DEV_NUM);
+		sprintf(buffer, "0x%x", addr);
+		sprintf(start, "0x%x", base);
+		sprintf(length, "0x%x", len);
+
+		ret = do_mmcops(NULL, 0, 6, argv);
+	} else {
+		uint bl_st = base;
+		uint bl_cnt = len;
+
+		printf("Compressed ext4 image\n");
+
+#if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
+		nul_buf_align = calloc(sizeof(char), 512 * 1024 + 4);
+		if (nul_buf_align == NULL) {
+			printf("Error: calloc failed for nul_buf_align\n");
+			ret = 1;
+			return ret;
+		}
+		if (((unsigned int)nul_buf_align % 8) == 0)
+			nul_buf = nul_buf_align;
+		else
+			nul_buf = nul_buf_align + 4;
+#else
+		nul_buf = calloc(sizeof(char), 512 * 1024);
+#endif
+		if (nul_buf == NULL) {
+			printf("Error: calloc failed for nul_buf\n");
+			ret = 1;
+			return ret;
+		}
+
+		mmc = find_mmc_device(DEV_NUM);
+
+		if (bl_st&0x3ff) {
+			mmc->block_dev.block_write(DEV_NUM, bl_st,
+					1024 - (bl_st & 0x3ff), nul_buf);
+
+			printf("*** erase start block 0x%x ***\n", bl_st);
+
+			bl_cnt = bl_cnt - (1024 - (bl_st & 0x3ff));
+			bl_st = (bl_st & (~0x3ff)) + 1024;
+		}
+
+		if (bl_cnt & 0x3ff) {
+			mmc->block_dev.block_write(DEV_NUM,
+					bl_st + bl_cnt - (bl_cnt & 0x3ff),
+					bl_cnt & 0x3ff, nul_buf);
+
+			printf("*** erase block length 0x%x ***\n", bl_cnt);
+
+			bl_cnt = bl_cnt - (bl_cnt & 0x3ff);
+		}
+
+#if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
+		free(nul_buf_align);
+#else
+		free(nul_buf);
+#endif
+
+		if (bl_cnt >> 10) {
+			argv[2] = buffer;
+			argv[3] = device;
+			argv[4] = start;
+			argv[5] = length;
+
+			sprintf(cmd, "erase");
+			sprintf(buffer, "user");
+			sprintf(device, "%d", DEV_NUM);
+			sprintf(start, "%x", bl_st);
+			sprintf(length, "%x", bl_cnt);
+			printf("mmc %s %s %s %s %s\n", argv[1], argv[2],
+					argv[3], argv[4], argv[5]);
+
+			ret = do_mmcops(NULL, 0, 6, argv);
+		} else
+			printf("*** erase block length too small ***\n");
+
+		ret = write_compressed_ext4((char *)addr, start);
+	}
+	return ret;
+}
+
+static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
+				unsigned int size)
+{
+	int ret = 1;
+	char cmd[32], device[32], part[32], part2[32];
+	char start[32], length[32], buffer[32], run_cmd[32];
+	char dev_num[2];
+	char *argv[6]  = { NULL, NULL, NULL, NULL, NULL, NULL, };
+	int argc = 0;
+	char *nul_buf;
+#if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
+	char *nul_buf_align;
+#endif
+	struct mmc *mmc;
+	int is_sparse;
+
+	if ((ptn->length != 0) && (size > ptn->length)) {
 		printf("Error: Image size is larger than partition size!\n");
 		return 1;
 	}
@@ -533,97 +641,12 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr, u
 
 	if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_USE_MMC_CMD)
 	{
-		if (check_compress_ext4((char*)addr,ptn->length) != 0) {
-			argv[2] = device;
-			argv[3] = buffer;
-			argv[4] = start;
-			argv[5] = length;
-
-			sprintf(device, "mmc %d", DEV_NUM);
-			sprintf(buffer, "0x%x", addr);
-			sprintf(start, "0x%x", (ptn->start / CFG_FASTBOOT_SDMMC_BLOCKSIZE));
-			sprintf(length, "0x%x", (ptn->length / CFG_FASTBOOT_SDMMC_BLOCKSIZE));
-
-			ret = do_mmcops(NULL, 0, 6, argv);
-		} else {
-			uint bl_st = ptn->start / CFG_FASTBOOT_SDMMC_BLOCKSIZE;
-			uint bl_cnt = ptn->length / CFG_FASTBOOT_SDMMC_BLOCKSIZE;
-
-			printf("Compressed ext4 image\n");
-
-#if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
-			nul_buf_align = calloc(sizeof(char), 512*1024 + 4);
-			if (nul_buf_align == NULL) {
-				printf("Error: calloc failed for nul_buf_align\n");
-				ret = 1;
-				return ret;
-			}
-			if (((unsigned int)nul_buf_align % 8) == 0)
-				nul_buf = nul_buf_align;
-			else
-				nul_buf = nul_buf_align + 4;
-#else
-			nul_buf = calloc(sizeof(char), 512*1024);
-#endif
-			if (nul_buf == NULL) {
-				printf("Error: calloc failed for nul_buf\n");
-				ret = 1;
-				return ret;
-			}
-
-			mmc = find_mmc_device(DEV_NUM);
-
-			if (bl_st&0x3ff)
-			{
-				mmc->block_dev.block_write(DEV_NUM, bl_st, 1024 -(bl_st&0x3ff), nul_buf);
-
-				printf("*** erase start block 0x%x ***\n", bl_st);
-
-				bl_cnt = bl_cnt - (1024-(bl_st&0x3ff));
-				bl_st = (bl_st&(~0x3ff))+1024;
-			}
-
-			if (bl_cnt&0x3ff)
-			{
-				mmc->block_dev.block_write(DEV_NUM, bl_st+bl_cnt-(bl_cnt&0x3ff), bl_cnt&0x3ff, nul_buf);
-
-				printf("*** erase block length 0x%x ***\n", bl_cnt);
-
-				bl_cnt = bl_cnt - (bl_cnt&0x3ff);
-			}
-
-#if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
-			free(nul_buf_align);
-#else
-			free(nul_buf);
-#endif
-
-			if (bl_cnt>>10)
-			{
-				argv[2] = buffer;
-				argv[3] = device;
-				argv[4] = start;
-				argv[5] = length;
-
-				sprintf(cmd, "erase");
-				sprintf(buffer, "user");
-				sprintf(device, "%d", DEV_NUM);
-				sprintf(start, "%x", bl_st);
-				sprintf(length, "%x", bl_cnt);
-				printf("mmc %s %s %s %s %s\n", argv[1], argv[2], argv[3], argv[4], argv[5]);
-
-				ret = do_mmcops(NULL, 0, 6, argv);
-			}
-			else
-			{
-				printf("*** erase block length too small ***\n");
-			}
-			ret = write_compressed_ext4((char*)addr,
-					ptn->start / CFG_FASTBOOT_SDMMC_BLOCKSIZE);
-		}
-	}
-	else if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD)
-	{
+		is_sparse = !check_compress_ext4((char *)addr, ptn->length);
+		ret = write_buffer_sdmmc(addr,
+				ptn->start / CFG_FASTBOOT_SDMMC_BLOCKSIZE,
+				ptn->length / CFG_FASTBOOT_SDMMC_BLOCKSIZE,
+				is_sparse);
+	} else if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD) {
 		argv[2] = part;
 		argv[3] = dev_num;
 		argv[4] = buffer;
