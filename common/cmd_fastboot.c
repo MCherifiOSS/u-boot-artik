@@ -839,6 +839,484 @@ static int download_data(const unsigned char *buffer,
 	return 0;
 }
 
+static int process_cmd_reboot(const char *cmdbuf, char *response)
+{
+	if (!strcmp(cmdbuf + 6, "-bootloader")) {
+		gflag_reboot = 1;
+		return 0;
+	} else
+		memset(interface.transfer_buffer, 0x0,
+				FASTBOOT_REBOOT_MAGIC_SIZE);
+
+	sprintf(response, "OKAY");
+	fastboot_tx_status(response, strlen(response), FASTBOOT_TX_SYNC);
+
+#ifdef CONFIG_USE_LCD
+	/* Turning LCD off before SW reset. */
+	Display_Turnoff();
+#endif
+	do_reset(NULL, 0, 0, NULL);
+
+	/* This code is unreachable,
+	   leave it to make the compiler happy */
+	return 0;
+}
+
+static int process_cmd_getvar(const char *cmdbuf, char *response)
+{
+	/* getvar
+	   Get common fastboot variables
+	   Board has a chance to handle other variables */
+	strcpy(response, "OKAY");
+
+	if (!strcmp(cmdbuf + 7, "version"))
+		strcpy(response + 4, FASTBOOT_VERSION);
+	else if (!strcmp(cmdbuf + 7, "product"))
+		if (interface.product_name)
+			strcpy(response + 4, interface.product_name);
+	else if (!strcmp(cmdbuf + 7, "serialno"))
+		if (interface.serial_no)
+			strcpy(response + 4, interface.serial_no);
+	else if (!strcmp(cmdbuf + 7, "downloadsize"))
+		if (interface.transfer_buffer_size)
+			sprintf(response + 4, "%08x",
+					interface.transfer_buffer_size);
+	else
+		fastboot_getvar(cmdbuf + 7, response + 4);
+
+	return 0;
+}
+
+static int process_cmd_erase(const char *cmdbuf, char *response)
+{
+	struct fastboot_ptentry *ptn;
+	char start[32], length[32];
+	int status;
+
+	ptn = fastboot_flash_find_ptn(cmdbuf + 6);
+	if (ptn == 0) {
+		sprintf(response, "FAILpartition does not exist");
+		return 0;
+	}
+
+	if (OmPin == BOOT_MMCSD)
+		printf("erasing(formatting) '%s'\n", ptn->name);
+	else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC)
+		printf("erasing '%s'\n", ptn->name);
+	else if (OmPin == BOOT_ONENAND)
+		printf("erasing '%s'\n", ptn->name);
+
+#ifdef CONFIG_USE_LCD
+	LCD_setfgcolor(0x7FFFD4);
+	LCD_setprogress(100);
+#endif
+
+	if (OmPin == BOOT_MMCSD) {
+		/* Temporary (but, simplest) implementation */
+		char run_cmd[80];
+		status = 1;
+		if (!strcmp(ptn->name, "userdata"))
+		{
+			sprintf(run_cmd, "ext3format mmc 0:3");
+			status = run_command(run_cmd, 0);
+		} else if (!strcmp(ptn->name, "cache")) {
+			sprintf(run_cmd, "ext3format mmc 0:4");
+			status = run_command(run_cmd, 0);
+		} else if (!strcmp(ptn->name, "fat")) {
+			sprintf(run_cmd, "fatformat mmc 0:1");
+			status = run_command(run_cmd, 0);
+		}
+	} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
+		char run_cmd[80];
+		status = 1;
+		if (!strcmp(ptn->name, "userdata")) {
+			sprintf(run_cmd, "ext3format mmc 0:3");
+			status = run_command(run_cmd, 0);
+		} else if (!strcmp(ptn->name, "cache")) {
+			sprintf(run_cmd, "ext3format mmc 0:4");
+			status = run_command(run_cmd, 0);
+		} else if (!strcmp(ptn->name, "fat")) {
+			sprintf(run_cmd, "fatformat mmc 0:1");
+			status = run_command(run_cmd, 0);
+		}
+	} else if (OmPin == BOOT_ONENAND) {
+#if defined(CFG_FASTBOOT_ONENANDBSP)
+		int argc_erase = 4;
+		/* do_nand and do_onenand do not check argv[0] */
+		char *argv_erase[5]  = { NULL, "erase",  NULL, NULL, NULL, };
+
+		argv_erase[2] = start;
+		argv_erase[3] = length;
+
+		sprintf(start, "0x%x", ptn->start);
+		sprintf(length, "0x%x", ptn->length);
+
+		if (ptn->length == 0)
+			argc_erase = 3;
+
+		status = CFG_FASTBOOT_FLASHCMD(NULL, 0, argc_erase,
+						argv_erase);
+#endif
+	}
+
+	if (status)
+		sprintf(response, "FAILfailed to erase partition");
+	else {
+		printf("partition '%s' erased\n", ptn->name);
+		sprintf(response, "OKAY");
+	}
+
+	return 0;
+}
+
+static int process_cmd_download(const char *cmdbuf, char *response)
+{
+	/* save the size */
+	download_size = simple_strtoul(cmdbuf + 9, NULL, 16);
+	/* Reset the bytes count, now it is safe */
+	download_bytes = 0;
+	/* Reset error */
+	download_error = 0;
+
+	printf("Starting download of %d bytes\n", download_size);
+
+	if (0 == download_size) {
+		/* bad user input */
+		sprintf(response, "FAILdata invalid size");
+	} else if (download_size > interface.transfer_buffer_size) {
+		/* set download_size to 0 because this is an error */
+		download_size = 0;
+		sprintf(response, "FAILdata too large");
+	} else {
+		/* The default case, the transfer fits
+		   completely in the interface buffer */
+		sprintf(response, "DATA%08x", download_size);
+	}
+
+	return 0;
+}
+
+/* boot
+   boot what was downloaded
+
+   WARNING WARNING WARNING
+
+   This is not what you expect.
+   The fastboot client does its own packaging of the
+   kernel.  The layout is defined in the android header
+   file bootimage.h.  This layeout is copiedlooks like this,
+
+ **
+ ** +-----------------+
+ ** | boot header     | 1 page
+ ** +-----------------+
+ ** | kernel          | n pages
+ ** +-----------------+
+ ** | ramdisk         | m pages
+ ** +-----------------+
+ ** | second stage    | o pages
+ ** +-----------------+
+ **
+
+ What is a page size ?
+ The fastboot client uses 2048
+
+ The is the default value of CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE
+ */
+static int process_cmd_boot(const char *cmdbuf, char *response)
+{
+	if (download_bytes &&
+		(CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE < download_bytes)) {
+		/* Note: We store zImage and ramdisk at different partitions */
+		char addr_kernel[32];
+		char addr_ramdisk[32];
+		int pageoffset_ramdisk;
+
+		char *bootz[3] = { "bootz", NULL, NULL, };
+
+		/*
+		 * Use this later to determine if a command line was passed
+		 * for the kernel.
+		 */
+		struct fastboot_boot_img_hdr *fb_hdr =
+			(struct fastboot_boot_img_hdr *)
+				interface.transfer_buffer;
+
+		/* Skip the mkbootimage header */
+		image_header_t *hdr = (image_header_t *)
+			&interface.transfer_buffer
+			[CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE];
+
+		printf("Kernel size: %08x\n", fb_hdr->kernel_size);
+		printf("Ramdisk size: %08x\n", fb_hdr->ramdisk_size);
+
+		pageoffset_ramdisk = 1 + (fb_hdr->kernel_size +
+				CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE - 1)
+				/ CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE;
+
+		bootz[1] = addr_kernel;
+		sprintf(addr_kernel, "0x%x", CFG_FASTBOOT_ADDR_KERNEL);
+		memcpy((void *)CFG_FASTBOOT_ADDR_KERNEL,
+				interface.transfer_buffer +
+				CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE,
+				fb_hdr->kernel_size);
+		bootz[2] = addr_ramdisk;
+		sprintf(addr_ramdisk, "0x%x", CFG_FASTBOOT_ADDR_RAMDISK);
+		memcpy((void *)CFG_FASTBOOT_ADDR_RAMDISK,
+				interface.transfer_buffer +
+				(pageoffset_ramdisk *
+				 CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE),
+				fb_hdr->ramdisk_size);
+
+		/* Execution should jump to kernel so send the response
+		   now and wait a bit.  */
+		sprintf(response, "OKAY");
+		fastboot_tx_status(response, strlen(response),
+				FASTBOOT_TX_SYNC);
+		udelay(1000000); /* 1 sec */
+
+#ifdef CONFIG_ROOTFS_ATAGS
+		char ramdisk_size[32];
+		sprintf(ramdisk_size, "0x%x", fb_hdr->ramdisk_size);
+		setenv("rootfslen", ramdisk_size);
+#endif
+		if (ntohl(hdr->ih_magic) == IH_MAGIC) {
+			/* Looks like a kernel.. */
+			printf("Booting kernel..\n");
+
+			/*
+			 * Check if the user sent a bootargs down.
+			 * If not, do not override what is already there
+			 */
+			if (strlen((char *) &fb_hdr->cmdline[0]))
+				set_env("bootargs",
+					(char *)&fb_hdr->cmdline[0]);
+			do_bootz(NULL, 0, 2, bootz);
+		} else {
+			/* Raw image, maybe another uboot */
+			printf("Booting raw image..\n");
+
+			do_bootz(NULL, 0, 3, bootz);
+		}
+		printf("ERROR : bootting failed\n");
+		printf("You should reset the board\n");
+	}
+	sprintf(response, "FAILinvalid boot image");
+
+	return 0;
+}
+
+static int process_cmd_flash_boot(const char *cmdbuf, char *response)
+{
+	int pageoffset_ramdisk, ret;
+	struct fastboot_ptentry *ptn;
+
+	struct fastboot_boot_img_hdr *fb_hdr =
+		(struct fastboot_boot_img_hdr *)interface.transfer_buffer;
+	image_header_t *hdr = (image_header_t *)
+		&interface.transfer_buffer[CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE];
+
+	printf("Kernel size: %08x\n", fb_hdr->kernel_size);
+	printf("Ramdisk size: %08x\n", fb_hdr->ramdisk_size);
+
+	ptn = fastboot_flash_find_ptn("kernel");
+	if (ptn->length && fb_hdr->kernel_size > ptn->length) {
+		sprintf(response, "FAILimage too large for partition");
+		return 0;
+	}
+
+	if (OmPin == BOOT_ONENAND) {
+#if defined(CFG_FASTBOOT_ONENANDBSP)
+		ret = write_to_ptn(ptn,
+				(unsigned int)interface.transfer_buffer
+				+ CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE,
+				fb_hdr->kernel_size);
+#endif
+	} else if (OmPin == BOOT_MMCSD) {
+		ret = write_to_ptn_sdmmc(ptn,
+				(unsigned int)interface.transfer_buffer
+				+ CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE,
+				fb_hdr->kernel_size);
+	} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
+		ret = write_to_ptn_sdmmc(ptn,
+				(unsigned int)interface.transfer_buffer
+				+ CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE,
+				fb_hdr->kernel_size);
+	}
+
+	pageoffset_ramdisk = 1 + (fb_hdr->kernel_size +
+			CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE - 1)
+		/ CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE;
+	ptn = fastboot_flash_find_ptn("ramdisk");
+	if (ptn->length && fb_hdr->ramdisk_size > ptn->length) {
+		sprintf(response, "FAILimage too large for partition");
+		return 0;
+	}
+
+	if (OmPin == BOOT_ONENAND) {
+#if defined(CFG_FASTBOOT_ONENANDBSP)
+		ret |= write_to_ptn(ptn,
+				(unsigned int)interface.transfer_buffer
+				+ (pageoffset_ramdisk *
+					CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE),
+				fb_hdr->ramdisk_size);
+#endif
+	} else if (OmPin == BOOT_MMCSD) {
+		ret |= write_to_ptn_sdmmc(ptn,
+				(unsigned int)interface.transfer_buffer +
+				(pageoffset_ramdisk *
+				 CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE),
+				fb_hdr->ramdisk_size);
+	} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
+		ret |= write_to_ptn_sdmmc(ptn,
+				(unsigned int)interface.transfer_buffer
+				+ (pageoffset_ramdisk *
+				   CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE),
+				fb_hdr->ramdisk_size);
+	}
+	if (ret) {
+		printf("flashing '%s' failed\n", "kernel+ramdisk");
+		sprintf(response, "FAILfailed to flash partition");
+	} else {
+		printf("partition '%s' flashed\n", "kernel+ramdisk");
+		sprintf(response, "OKAY");
+	}
+
+	return 0;
+}
+
+static int process_cmd_flash_env(const char *cmdbuf, char *response,
+	struct fastboot_ptentry *ptn)
+{
+	/* Since the response can only be 64 bytes,
+	   there is no point in having a large error message. */
+	char err_string[32];
+	if (saveenv_to_ptn(ptn, &err_string[0])) {
+		printf("savenv '%s' failed : %s\n", ptn->name, err_string);
+		sprintf(response, "FAIL%s", err_string);
+	} else {
+		printf("partition '%s' saveenv-ed\n", ptn->name);
+		sprintf(response, "OKAY");
+	}
+
+	return 0;
+}
+
+static int process_cmd_flash_normal(const char *cmdbuf, char *response,
+	struct fastboot_ptentry *ptn)
+{
+	/* Normal case */
+	if (OmPin == BOOT_ONENAND) {
+#if defined(CFG_FASTBOOT_ONENANDBSP)
+		if (write_to_ptn(ptn, (unsigned int)interface.transfer_buffer,
+				 download_bytes)) {
+			printf("flashing '%s' failed\n", ptn->name);
+			sprintf(response, "FAILfailed to flash partition");
+		} else {
+			printf("partition '%s' flashed\n", ptn->name);
+			sprintf(response, "OKAY");
+		}
+#endif
+	} else if (OmPin == BOOT_MMCSD) {
+		if (write_to_ptn_sdmmc(ptn,
+		    (unsigned int)interface.transfer_buffer, download_bytes)) {
+			printf("flashing '%s' failed\n", ptn->name);
+			sprintf(response, "FAILfailed to flash partition");
+		} else {
+			printf("partition '%s' flashed\n", ptn->name);
+			sprintf(response, "OKAY");
+		}
+	} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
+		if (write_to_ptn_sdmmc(ptn,
+		    (unsigned int)interface.transfer_buffer, download_bytes)) {
+			printf("flashing '%s' failed\n", ptn->name);
+			sprintf(response, "FAILfailed to flash partition");
+		} else {
+			printf("partition '%s' flashed\n", ptn->name);
+			sprintf(response, "OKAY");
+		}
+	}
+	return 0;
+}
+
+static int process_cmd_flash(const char *cmdbuf, char *response)
+{
+	struct fastboot_ptentry *ptn;
+
+	if (download_bytes == 0) {
+		sprintf(response, "FAILno image downloaded");
+		return 0;
+	}
+
+#ifdef CONFIG_USE_LCD
+	LCD_setfgcolor(0x8B4500);
+	LCD_setprogress(100);
+#endif
+
+	/* Special case: boot.img */
+	if (!strcmp("boot", cmdbuf + 6))
+		return process_cmd_flash_boot(cmdbuf, response);
+
+	ptn = fastboot_flash_find_ptn(cmdbuf + 6);
+	if (ptn == 0)
+		sprintf(response, "FAILpartition does not exist");
+	else if ((download_bytes > ptn->length) && (ptn->length != 0) &&
+			!(ptn->flags & FASTBOOT_PTENTRY_FLAGS_WRITE_ENV)) {
+		sprintf(response, "FAILimage too large for partition");
+		/* TODO : Improve check for yaffs write */
+	} else {
+		/* Check if this is not really a flash write
+		   but rather a saveenv */
+		if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_WRITE_ENV)
+			return process_cmd_flash_env(cmdbuf, response, ptn);
+		else
+			return process_cmd_flash_normal(cmdbuf, response, ptn);
+	}
+	return 0;
+}
+
+static int process_cmd_oem(const char *cmdbuf, char *response)
+{
+	sprintf(response, "INFOunknown OEM command");
+	fastboot_tx_status(response, strlen(response), FASTBOOT_TX_ASYNC);
+
+	sprintf(response, "OKAY");
+	fastboot_tx_status(response, strlen(response), FASTBOOT_TX_ASYNC);
+
+	return 0;
+}
+
+#ifdef CONFIG_RAMDUMP_MODE
+static int process_cmd_ramdump(const char *cmdbuf, char *response)
+{
+	printf("\nGot ramdump command\n");
+	is_ramdump = 1;
+	/* save the size */
+	download_size = simple_strtoul(cmdbuf + 8, NULL, 16);
+	/* Reset the bytes count, now it is safe */
+	download_bytes = 0;
+	/* Reset error */
+	download_error = 0;
+
+	printf("Starting download of %d bytes\n", download_size);
+
+	if (0 == download_size) {
+		/* bad user input */
+		sprintf(response, "FAILdata invalid size");
+	} else if (download_size > interface.transfer_buffer_size) {
+		/* set download_size to 0 because this is an error */
+		download_size = 0;
+		sprintf(response, "FAILdata too large");
+	} else {
+		/* The default case, the transfer fits
+		   completely in the interface buffer */
+		sprintf(response, "DATA%08x", download_size);
+	}
+
+	return 0;
+}
+#endif /* CONFIG_RAMDUMP_MODE */
+
 static int rx_handler (const unsigned char *buffer, unsigned int buffer_size)
 {
 	int ret = 1;
@@ -862,556 +1340,27 @@ static int rx_handler (const unsigned char *buffer, unsigned int buffer_size)
 
 		/* reboot
 		   Reboot the board. */
-		if (memcmp(cmdbuf, "reboot", 6) == 0)
-		{
-			if (!strcmp(cmdbuf + 6, "-bootloader"))
-			{
-				gflag_reboot = 1;
-				return 0;
-			}
-			else
-			{
-				memset(interface.transfer_buffer, 0x0, FASTBOOT_REBOOT_MAGIC_SIZE);
-			}
-
-			sprintf(response,"OKAY");
-			fastboot_tx_status(response, strlen(response), FASTBOOT_TX_SYNC);
-			//udelay (1000000); /* 1 sec */
-
-#ifdef CONFIG_USE_LCD
-			/* Turning LCD off before SW reset. */
-			Display_Turnoff();
-#endif
-			do_reset (NULL, 0, 0, NULL);
-
-			/* This code is unreachable,
-			   leave it to make the compiler happy */
-			return 0;
-		}
-
-		/* getvar
-		   Get common fastboot variables
-		   Board has a chance to handle other variables */
-		if (memcmp(cmdbuf, "getvar:", 7) == 0)
-		{
-			strcpy(response,"OKAY");
-
-			if (!strcmp(cmdbuf + 7, "version"))
-			{
-				strcpy(response + 4, FASTBOOT_VERSION);
-			}
-			else if (!strcmp(cmdbuf + 7, "product"))
-			{
-				if (interface.product_name)
-					strcpy(response + 4, interface.product_name);
-			}
-			else if (!strcmp(cmdbuf + 7, "serialno"))
-			{
-				if (interface.serial_no)
-					strcpy(response + 4, interface.serial_no);
-			}
-			else if (!strcmp(cmdbuf + 7, "downloadsize"))
-			{
-				if (interface.transfer_buffer_size)
-					sprintf(response + 4, "%08x", interface.transfer_buffer_size);
-			}
-#ifdef CONFIG_MACH_SHIRI
-			else if (!strcmp(cmdbuf + 7, "fdisk"))
-			{
-				ret = run_command("fdisk -c 0 400 2600 200", 0);
-				if(ret == 0)
-				{
-					strcpy(response + 4, "fdisk ok");
-				}
-				else
-				{
-					strcpy(response + 4, "fdisk fail");
-				}
-			}
-			else if (!strcmp(cmdbuf + 7, "ok"))
-			{
-				ret = run_command("fatformat mmc 0:1;ext3format mmc 0:2;ext3format mmc 0:3;ext3format mmc 0:4;", 0);
-				if(ret == 0)
-				{
-					strcpy(response + 4, "formati ok");
-				}
-				else
-				{
-					strcpy(response + 4, "format fail");
-				}
-			}
-#endif
-
-			else
-			{
-				fastboot_getvar(cmdbuf + 7, response + 4);
-			}
-			ret = 0;
-			goto send_tx_status;
-		}
-
-		/* erase
-		   Erase a register flash partition
-		   Board has to set up flash partitions */
-		if (memcmp(cmdbuf, "erase:", 6) == 0)
-		{
-			struct fastboot_ptentry *ptn;
-
-			ptn = fastboot_flash_find_ptn(cmdbuf + 6);
-			if (ptn == 0)
-			{
-				sprintf(response, "FAILpartition does not exist");
-				ret = 0;
-				goto send_tx_status;
-			}
-
-			char start[32], length[32];
-			int status;
-
-			if (OmPin == BOOT_MMCSD) {
-			printf("erasing(formatting) '%s'\n", ptn->name);
-			} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
-				printf("erasing '%s'\n", ptn->name);
-			} else if (OmPin == BOOT_ONENAND) {
-			printf("erasing '%s'\n", ptn->name);
-				}
-
-#ifdef CONFIG_USE_LCD
-			LCD_setfgcolor(0x7FFFD4);
-			LCD_setprogress(100);
-#endif
-
-			if (OmPin == BOOT_MMCSD) {
-				// Temporary (but, simplest) implementation
-				char run_cmd[80];
-				status = 1;
-				if (!strcmp(ptn->name, "userdata"))
-				{
-					sprintf(run_cmd, "ext3format mmc 0:3");
-					status = run_command(run_cmd, 0);
-				}
-				else if (!strcmp(ptn->name, "cache"))
-				{
-					sprintf(run_cmd, "ext3format mmc 0:4");
-					status = run_command(run_cmd, 0);
-				}
-				else if (!strcmp(ptn->name, "fat"))
-				{
-					sprintf(run_cmd, "fatformat mmc 0:1");
-					status = run_command(run_cmd, 0);
-				}
-			} else if(OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
-				char run_cmd[80];
-				status = 1;
-				if (!strcmp(ptn->name, "userdata")) {
-					sprintf(run_cmd, "ext3format mmc 0:3");
-					status = run_command(run_cmd, 0);
-				} else if (!strcmp(ptn->name, "cache")) {
-					sprintf(run_cmd, "ext3format mmc 0:4");
-					status = run_command(run_cmd, 0);
-				} else if (!strcmp(ptn->name, "fat")) {
-					sprintf(run_cmd, "fatformat mmc 0:1");
-					status = run_command(run_cmd, 0);
-				}
-			}
-//#else
-			else if(OmPin == BOOT_ONENAND) {
-#if defined(CFG_FASTBOOT_ONENANDBSP)
-				int argc_erase = 4;
-				/* do_nand and do_onenand do not check argv[0] */
-				char *argv_erase[5]  = { NULL, "erase",  NULL, NULL, NULL, };
-
-				argv_erase[2] = start;
-				argv_erase[3] = length;
-
-				sprintf(start, "0x%x", ptn->start);
-				sprintf(length, "0x%x", ptn->length);
-
-				if (ptn->length == 0)
-					argc_erase = 3;
-
-				status = CFG_FASTBOOT_FLASHCMD(NULL, 0, argc_erase, argv_erase);
-#endif
-			}
-
-			if (status)
-			{
-				sprintf(response,"FAILfailed to erase partition");
-			}
-			else
-			{
-				printf("partition '%s' erased\n", ptn->name);
-				sprintf(response, "OKAY");
-			}
-			ret = 0;
-			goto send_tx_status;
-		}
-
-		/* download
-		   download something ..
-		   What happens to it depends on the next command after data */
-		if (memcmp(cmdbuf, "download:", 9) == 0)
-		{
-			/* save the size */
-			download_size = simple_strtoul(cmdbuf + 9, NULL, 16);
-			/* Reset the bytes count, now it is safe */
-			download_bytes = 0;
-			/* Reset error */
-			download_error = 0;
-
-			printf("Starting download of %d bytes\n", download_size);
-
-			if (0 == download_size)
-			{
-				/* bad user input */
-				sprintf(response, "FAILdata invalid size");
-			}
-			else if (download_size > interface.transfer_buffer_size)
-			{
-				/* set download_size to 0 because this is an error */
-				download_size = 0;
-				sprintf(response, "FAILdata too large");
-			}
-			else
-			{
-				/* The default case, the transfer fits
-				   completely in the interface buffer */
-				sprintf(response, "DATA%08x", download_size);
-			}
-			ret = 0;
-			goto send_tx_status;
-		}
-
-		/* boot
-		   boot what was downloaded
-
-		   WARNING WARNING WARNING
-
-		   This is not what you expect.
-		   The fastboot client does its own packaging of the
-		   kernel.  The layout is defined in the android header
-		   file bootimage.h.  This layeout is copiedlooks like this,
-
-		   **
-		   ** +-----------------+
-		   ** | boot header     | 1 page
-		   ** +-----------------+
-		   ** | kernel          | n pages
-		   ** +-----------------+
-		   ** | ramdisk         | m pages
-		   ** +-----------------+
-		   ** | second stage    | o pages
-		   ** +-----------------+
-		   **
-
-		   What is a page size ?
-		   The fastboot client uses 2048
-
-		   The is the default value of CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE
-		*/
-		if (memcmp(cmdbuf, "boot", 4) == 0)
-		{
-			if ((download_bytes) &&
-			    (CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE < download_bytes))
-			{
-				/* Note: We store zImage and ramdisk at different partitions */
-				char addr_kernel[32];
-				char addr_ramdisk[32];
-				int pageoffset_ramdisk;
-
-				char *bootz[3] = { "bootz", NULL, NULL, };
-				//char *go[3]    = { "go",    NULL, NULL, };
-
-				/*
-				 * Use this later to determine if a command line was passed
-				 * for the kernel.
-				 */
-				struct fastboot_boot_img_hdr *fb_hdr =
-					(struct fastboot_boot_img_hdr *) interface.transfer_buffer;
-
-				/* Skip the mkbootimage header */
-				image_header_t *hdr =
-					(image_header_t *)
-					&interface.transfer_buffer[CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE];
-
-				printf("Kernel size: %08x\n", fb_hdr->kernel_size);
-				printf("Ramdisk size: %08x\n", fb_hdr->ramdisk_size);
-
-				pageoffset_ramdisk = 1 + (fb_hdr->kernel_size + CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE - 1) / CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE;
-
-				bootz[1] = addr_kernel;
-				sprintf(addr_kernel, "0x%x", CFG_FASTBOOT_ADDR_KERNEL);
-				memcpy((void *)CFG_FASTBOOT_ADDR_KERNEL,
-					interface.transfer_buffer + CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE,
-					fb_hdr->kernel_size);
-				bootz[2] = addr_ramdisk;
-				sprintf(addr_ramdisk, "0x%x", CFG_FASTBOOT_ADDR_RAMDISK);
-				memcpy((void *)CFG_FASTBOOT_ADDR_RAMDISK, interface.transfer_buffer +
-					(pageoffset_ramdisk * CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE),
-					fb_hdr->ramdisk_size);
-
-				/* Execution should jump to kernel so send the response
-				   now and wait a bit.  */
-				sprintf(response, "OKAY");
-				fastboot_tx_status(response, strlen(response), FASTBOOT_TX_SYNC);
-				udelay (1000000); /* 1 sec */
-
-#ifdef CONFIG_ROOTFS_ATAGS
-				char ramdisk_size[32];
-				sprintf(ramdisk_size, "0x%x", fb_hdr->ramdisk_size);
-				setenv("rootfslen", ramdisk_size);
-#endif
-				if (ntohl(hdr->ih_magic) == IH_MAGIC) {
-					/* Looks like a kernel.. */
-					printf("Booting kernel..\n");
-
-					/*
-					 * Check if the user sent a bootargs down.
-					 * If not, do not override what is already there
-					 */
-					if (strlen ((char *) &fb_hdr->cmdline[0]))
-						set_env ("bootargs", (char *) &fb_hdr->cmdline[0]);
-
-					do_bootz (NULL, 0, 2, bootz);
-				} else {
-					/* Raw image, maybe another uboot */
-					printf("Booting raw image..\n");
-
-					//do_go (NULL, 0, 2, go);
-					do_bootz (NULL, 0, 3, bootz);
-				}
-				printf("ERROR : bootting failed\n");
-				printf("You should reset the board\n");
-			}
-			sprintf(response, "FAILinvalid boot image");
-			ret = 0;
-		}
-
-		/* flash
-		   Flash what was downloaded */
-		if (memcmp(cmdbuf, "flash:", 6) == 0)
-		{
-			if (download_bytes == 0)
-			{
-				sprintf(response, "FAILno image downloaded");
-				ret = 0;
-				goto send_tx_status;
-			}
-
-			struct fastboot_ptentry *ptn;
-
-#ifdef CONFIG_USE_LCD
-			LCD_setfgcolor(0x8B4500);
-			LCD_setprogress(100);
-#endif
-
-			/* Special case: boot.img */
-			if (!strcmp("boot", cmdbuf + 6))
-			{
-				int pageoffset_ramdisk;
-
-				struct fastboot_boot_img_hdr *fb_hdr =
-					(struct fastboot_boot_img_hdr *) interface.transfer_buffer;
-				image_header_t *hdr =
-					(image_header_t *)
-					&interface.transfer_buffer[CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE];
-
-				printf("Kernel size: %08x\n", fb_hdr->kernel_size);
-				printf("Ramdisk size: %08x\n", fb_hdr->ramdisk_size);
-
-				ptn = fastboot_flash_find_ptn("kernel");
-				if (ptn->length && fb_hdr->kernel_size > ptn->length)
-				{
-					sprintf(response, "FAILimage too large for partition");
-					goto send_tx_status;
-				}
-
-				if (OmPin == BOOT_ONENAND) {
-#if defined(CFG_FASTBOOT_ONENANDBSP)
-					ret = write_to_ptn(ptn,
-						(unsigned int)interface.transfer_buffer + CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE,
-						fb_hdr->kernel_size);
-#endif
-				} else if (OmPin == BOOT_MMCSD) {
-					ret = write_to_ptn_sdmmc(ptn,
-						(unsigned int)interface.transfer_buffer + CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE,
-						fb_hdr->kernel_size);
-				} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
-					ret = write_to_ptn_sdmmc(ptn,
-						(unsigned int)interface.transfer_buffer + CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE,
-						fb_hdr->kernel_size);
-				}
-
-				pageoffset_ramdisk =
-					1 + (fb_hdr->kernel_size + CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE - 1)
-						/ CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE;
-				ptn = fastboot_flash_find_ptn("ramdisk");
-				if (ptn->length && fb_hdr->ramdisk_size > ptn->length)
-				{
-					sprintf(response, "FAILimage too large for partition");
-					goto send_tx_status;
-				}
-
-				if (OmPin == BOOT_ONENAND) {
-#if defined(CFG_FASTBOOT_ONENANDBSP)
-					ret |= write_to_ptn(ptn,
-						(unsigned int)interface.transfer_buffer + (pageoffset_ramdisk * CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE),
-						fb_hdr->ramdisk_size);
-#endif
-				} else if (OmPin == BOOT_MMCSD) {
-					ret |= write_to_ptn_sdmmc(ptn,
-						(unsigned int)interface.transfer_buffer + (pageoffset_ramdisk * CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE),
-						fb_hdr->ramdisk_size);
-				} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
-					ret |= write_to_ptn_sdmmc(ptn,
-						(unsigned int)interface.transfer_buffer + (pageoffset_ramdisk * CFG_FASTBOOT_MKBOOTIMAGE_PAGE_SIZE),
-						fb_hdr->ramdisk_size);
-				}
-				if (ret)
-				{
-					printf("flashing '%s' failed\n", "kernel+ramdisk");
-					sprintf(response, "FAILfailed to flash partition");
-				}
-				else
-				{
-					printf("partition '%s' flashed\n", "kernel+ramdisk");
-					sprintf(response, "OKAY");
-				}
-
-				ret = 0;
-				goto send_tx_status;
-			}
-
-			ptn = fastboot_flash_find_ptn(cmdbuf + 6);
-			if (ptn == 0)
-			{
-				sprintf(response, "FAILpartition does not exist");
-			}
-			else if ((download_bytes > ptn->length) && (ptn->length != 0) &&
-				   !(ptn->flags & FASTBOOT_PTENTRY_FLAGS_WRITE_ENV))
-			{
-				sprintf(response, "FAILimage too large for partition");
-				/* TODO : Improve check for yaffs write */
-			}
-			else
-			{
-				/* Check if this is not really a flash write
-				   but rather a saveenv */
-				if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_WRITE_ENV)
-				{
-					/* Since the response can only be 64 bytes,
-					   there is no point in having a large error message. */
-					char err_string[32];
-					if (saveenv_to_ptn(ptn, &err_string[0]))
-					{
-						printf("savenv '%s' failed : %s\n", ptn->name, err_string);
-						sprintf(response, "FAIL%s", err_string);
-					}
-					else
-					{
-						printf("partition '%s' saveenv-ed\n", ptn->name);
-						sprintf(response, "OKAY");
-					}
-				}
-				else
-				{
-					/* Normal case */
-					if (OmPin == BOOT_ONENAND) {
-#if defined(CFG_FASTBOOT_ONENANDBSP)
-						if (write_to_ptn(ptn, (unsigned int)interface.transfer_buffer, download_bytes))
-						{
-							printf("flashing '%s' failed\n", ptn->name);
-							sprintf(response, "FAILfailed to flash partition");
-						}
-						else
-						{
-							printf("partition '%s' flashed\n", ptn->name);
-							sprintf(response, "OKAY");
-						}
-#endif
-					} else if (OmPin == BOOT_MMCSD) {
-						if (write_to_ptn_sdmmc(ptn, (unsigned int)interface.transfer_buffer, download_bytes))
-						{
-							printf("flashing '%s' failed\n", ptn->name);
-							sprintf(response, "FAILfailed to flash partition");
-						}
-						else
-						{
-							printf("partition '%s' flashed\n", ptn->name);
-							sprintf(response, "OKAY");
-						}
-
-					} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
-						if (write_to_ptn_sdmmc(ptn, (unsigned int)interface.transfer_buffer, download_bytes)) {
-							printf("flashing '%s' failed\n", ptn->name);
-							sprintf(response, "FAILfailed to flash partition");
-						} else {
-							printf("partition '%s' flashed\n", ptn->name);
-							sprintf(response, "OKAY");
-						}
-
-					}
-
-				}
-			}
-			ret = 0;
-			goto send_tx_status;
-		}
-
-		/* verify */
-		/* continue */
-		/* powerdown */
-
-		/* oem
-		   oem command. */
-		if (memcmp(cmdbuf, "oem", 3) == 0)
-		{
-			sprintf(response,"INFOunknown OEM command");
-			fastboot_tx_status(response, strlen(response), FASTBOOT_TX_ASYNC);
-
-			sprintf(response,"OKAY");
-			fastboot_tx_status(response, strlen(response), FASTBOOT_TX_ASYNC);
-
-			return 0;
-		}
-
+		if (memcmp(cmdbuf, "reboot", 6) == 0) {
+			ret = process_cmd_reboot(cmdbuf, response);
+			return ret;
+		} else if (memcmp(cmdbuf, "getvar:", 7) == 0)
+			ret = process_cmd_getvar(cmdbuf, response);
+		else if (memcmp(cmdbuf, "erase:", 6) == 0)
+			ret = process_cmd_erase(cmdbuf, response);
+		else if (memcmp(cmdbuf, "download:", 9) == 0)
+			ret = process_cmd_download(cmdbuf, response);
+		else if (memcmp(cmdbuf, "boot", 4) == 0)
+			ret = process_cmd_boot(cmdbuf, response);
+		else if (memcmp(cmdbuf, "flash:", 6) == 0)
+			ret = process_cmd_flash(cmdbuf, response);
+		else if (memcmp(cmdbuf, "oem", 3) == 0)
+			return process_cmd_oem(cmdbuf, response);
 #if defined(CONFIG_RAMDUMP_MODE)
-		if (memcmp(cmdbuf, "ramdump:", 8) == 0)
-		{
-			printf("\nGot ramdump command\n");
-			is_ramdump = 1;
-			/* save the size */
-			download_size = simple_strtoul(cmdbuf + 8, NULL, 16);
-			/* Reset the bytes count, now it is safe */
-			download_bytes = 0;
-			/* Reset error */
-			download_error = 0;
-
-			printf("Starting download of %d bytes\n", download_size);
-
-			if (0 == download_size)
-			{
-				/* bad user input */
-				sprintf(response, "FAILdata invalid size");
-			}
-			else if (download_size > interface.transfer_buffer_size)
-			{
-				/* set download_size to 0 because this is an error */
-				download_size = 0;
-				sprintf(response, "FAILdata too large");
-			}
-			else
-			{
-				/* The default case, the transfer fits
-				   completely in the interface buffer */
-				sprintf(response, "DATA%08x", download_size);
-			}
-			ret = 0;
-			goto send_tx_status;
-		}
+		else if (memcmp(cmdbuf, "ramdump:", 8) == 0)
+			ret = process_cmd_ramdump(cmdbuf, response);
 #endif
-send_tx_status:
-		fastboot_tx_status(response, strlen(response), FASTBOOT_TX_ASYNC);
+		fastboot_tx_status(response, strlen(response),
+				FASTBOOT_TX_ASYNC);
 
 #ifdef CONFIG_USE_LCD
 		LCD_setprogress(0);
