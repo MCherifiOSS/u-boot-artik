@@ -151,6 +151,7 @@ static struct cmd_fastboot_interface interface =
 #if defined(CONFIG_RAMDUMP_MODE)
 static unsigned int is_ramdump = 0;
 #endif
+
 static unsigned int download_size;
 static unsigned int download_bytes;
 //static unsigned int download_bytes_unpadded;
@@ -764,6 +765,80 @@ static void start_ramdump(void *buf)
 }
 #endif
 
+static int download_data(const unsigned char *buffer,
+			 unsigned int buffer_size, char *response)
+{
+	/* Something to download */
+	if (buffer_size) {
+		/* Handle possible overflow */
+		unsigned int transfer_size = download_size - download_bytes;
+
+		if (buffer_size < transfer_size)
+			transfer_size = buffer_size;
+
+		/* Save the data to the transfer buffer */
+		memcpy(interface.transfer_buffer + download_bytes,
+				buffer, transfer_size);
+
+		download_bytes += transfer_size;
+
+		/* Check if transfer is done */
+		if (download_bytes >= download_size) {
+			/* Reset global transfer variable,
+			   Keep download_bytes because it will be
+			   used in the next possible flashing command */
+			download_size = 0;
+
+			if (download_error) {
+				/* There was an earlier error */
+				sprintf(response, "ERROR");
+			} else {
+				/* Everything has transferred,
+				   send the OK response */
+				sprintf(response, "OKAY");
+			}
+			fastboot_tx_status(response, strlen(response),
+					   FASTBOOT_TX_ASYNC);
+
+			printf("\ndownloading of %d bytes finished\n",
+				download_bytes);
+#ifdef CONFIG_USE_LCD
+			LCD_setprogress(0);
+#endif
+#if defined(CONFIG_RAMDUMP_MODE)
+			if (is_ramdump) {
+				is_ramdump = 0;
+				start_ramdump((void *)buffer);
+			}
+#endif
+		}
+
+		/* Provide some feedback */
+		if (download_bytes && download_size &&
+				0 == (download_bytes & (0x100000 - 1)))
+		{
+			/* Some feeback that the download is happening */
+			if (download_error)
+				printf("X");
+			else
+				printf(".");
+
+			if (0 == (download_bytes % (80 * 0x100000)))
+				printf("\n");
+#ifdef CONFIG_USE_LCD
+			LCD_setfgcolor(0x2E8B57);
+			LCD_setprogress(download_bytes / (download_size/100));
+#endif
+		}
+	} else {
+		/* Ignore empty buffers */
+		printf("Warning empty download buffer\n");
+		printf("Ignoring\n");
+	}
+
+	return 0;
+}
+
 static int rx_handler (const unsigned char *buffer, unsigned int buffer_size)
 {
 	int ret = 1;
@@ -775,84 +850,8 @@ static int rx_handler (const unsigned char *buffer, unsigned int buffer_size)
 	char *response = (char *)memalign(8, 65);
 
 	if (download_size)
-	{
-		/* Something to download */
-
-		if (buffer_size)
-		{
-			/* Handle possible overflow */
-			unsigned int transfer_size = download_size - download_bytes;
-
-			if (buffer_size < transfer_size)
-				transfer_size = buffer_size;
-
-			/* Save the data to the transfer buffer */
-			memcpy (interface.transfer_buffer + download_bytes,
-				buffer, transfer_size);
-
-			download_bytes += transfer_size;
-
-			/* Check if transfer is done */
-			if (download_bytes >= download_size)
-			{
-				/* Reset global transfer variable,
-				   Keep download_bytes because it will be
-				   used in the next possible flashing command */
-				download_size = 0;
-
-				if (download_error)
-				{
-					/* There was an earlier error */
-					sprintf(response, "ERROR");
-				}
-				else
-				{
-					/* Everything has transferred,
-					   send the OK response */
-					sprintf(response, "OKAY");
-				}
-				fastboot_tx_status(response, strlen(response), FASTBOOT_TX_ASYNC);
-
-				printf("\ndownloading of %d bytes finished\n", download_bytes);
-#ifdef CONFIG_USE_LCD
-				LCD_setprogress(0);
-#endif
-#if defined(CONFIG_RAMDUMP_MODE)
-				if (is_ramdump) {
-					is_ramdump = 0;
-					start_ramdump((void *)buffer);
-				}
-#endif
-			}
-
-			/* Provide some feedback */
-			if (download_bytes && download_size &&
-			    0 == (download_bytes & (0x100000 - 1)))
-			{
-				/* Some feeback that the download is happening */
-				if (download_error)
-					printf("X");
-				else
-					printf(".");
-				if (0 == (download_bytes %
-					  (80 * 0x100000)))
-					printf("\n");
-#ifdef CONFIG_USE_LCD
-				LCD_setfgcolor(0x2E8B57);
-				LCD_setprogress(download_bytes / (download_size/100));
-#endif
-			}
-		}
-		else
-		{
-			/* Ignore empty buffers */
-			printf("Warning empty download buffer\n");
-			printf("Ignoring\n");
-		}
-		ret = 0;
-	}
-	else
-	{
+		ret = download_data(buffer, buffer_size, response);
+	else {
 		/* A command */
 
 		/* Cast to make compiler happy with string functions */
