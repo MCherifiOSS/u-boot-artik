@@ -1668,6 +1668,34 @@ static int set_partition_table()
 #endif
 
 #if defined(CFG_FASTBOOT_SDMMCBSP)
+
+#ifdef CONFIG_FASTBOOT_GET_MMC_PARTITIONS
+static int get_mmc_partition_tables()
+{
+	int i, ret;
+	block_dev_desc_t *dev_desc;
+	disk_partition_t info;
+
+	ret = get_device("mmc", "0", &dev_desc);
+	if (ret < 0)
+		return -1;
+
+	for (i = 1; i < 128; i++) {
+		ret = get_partition_info(dev_desc, i, &info);
+		if (ret)
+			break;
+
+		strcpy(ptable[pcount].name, info.name);
+		ptable[pcount].start = info.start * info.blksz;
+		ptable[pcount].length = info.size * info.blksz;
+		ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MMC_CMD;
+		pcount++;
+	}
+
+	return pcount;
+}
+#endif	/* CONFIG_FASTBOOT_GET_MMC_PARTITIONS */
+
 static int set_partition_table_sdmmc()
 {
 	unsigned long long start, count;
@@ -1775,6 +1803,10 @@ static int set_partition_table_sdmmc()
 	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MMC_CMD;
 	pcount++;
 #endif	/* End of CONFIG_ANDROID_PARTITIONS */
+
+#ifdef CONFIG_FASTBOOT_GET_MMC_PARTITIONS
+	get_mmc_partition_tables();
+#endif	/* CONFIG_FASTBOOT_GET_MMC_PARTITIONS */
 
 #if 1 // Debug
 	fastboot_flash_dump_ptn();
