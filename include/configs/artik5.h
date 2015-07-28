@@ -251,8 +251,7 @@
 #define CONFIG_BOOTCOMMAND	"emmc open 0;movi r z f 0 40000000;emmc close 0;"	\
 				"movi read kernel 0 40008000;movi read rootfs 0 41000000 100000;bootz 40008000 41000000"
 #else
-/*#define CONFIG_BOOTCOMMAND	"movi read kernel 0 40008000;movi read rootfs 0 41000000 200000;bootz 40008000 41000000"*/
-#define CONFIG_BOOTCOMMAND	"movi read kernel 0 40008000;movi read rootfs 0 41000000 1000000;bootz 40008000 41000000"
+#define CONFIG_BOOTCOMMAND	"run mmcboot"
 #endif
 
 #define CONFIG_BOOTCOMMAND_VIA_SCRIPT "movi init 1;fatload mmc 1 0x40000000 booting_script;source 0x40000000"
@@ -417,6 +416,9 @@
 #define CONFIG_ROOTFS_OFFSET		25
 #endif
 
+#define CONFIG_ROOT_DEV		0
+#define CONFIG_ROOT_PART	1
+
 #define PARTS_DEFAULT \
 	"uuid_disk=${uuid_gpt_disk};" \
 	"name=rootfs,start=" __stringify(CONFIG_ROOTFS_OFFSET) "MiB,size=" \
@@ -428,7 +430,22 @@
 	"consoleon=set console console=" CONFIG_DEFAULT_CONSOLE "; saveenv; reset\0" \
 	"consoleoff=set console console=ram; saveenv; reset\0" \
 	"rootfslen=" __stringify(CONFIG_ROOTFS_LEN) "\0"	\
-	"partitions=" PARTS_DEFAULT
+	"partitions=" PARTS_DEFAULT \
+	"rootdev=" __stringify(CONFIG_ROOT_DEV) "\0" \
+	"rootpart=" __stringify(CONFIG_ROOT_PART) "\0" \
+	"root_rw=rw\0"	\
+	"opts=loglevel=4\0"	\
+	"boot_cmd=movi read kernel 0 40008000;"			\
+		"movi read rootfs 0 41000000 1000000;"		\
+		"bootz 40008000 41000000\0"			\
+	"ramfsboot=setenv bootargs ${console} root=/dev/ram0 "	\
+		"rootfstype=ext2 initrd=0x41000000,"		\
+		__stringify(CONFIG_RAMDISK_PART_SIZE)"M ${opts};"	\
+		"run boot_cmd\0"	\
+	"mmcboot=setenv bootargs ${console} "			\
+		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
+		"${opts};run boot_cmd\0"	\
+	"bootcmd=run mmcboot\0"
 
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR - 0x1000000)
 
