@@ -88,6 +88,11 @@ int do_movi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			goto usage;
 		attribute = 0x3;
 		break;
+	case 'e':
+		if (argc != (6 - location))
+			goto usage;
+		attribute = 0x4;
+		break;
 	case 'k':
 		if (argc != 5)
 			goto usage;
@@ -185,6 +190,25 @@ int do_movi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		blkcnt = image[i].used_blk;
 		printf("%s %d TrustZone S/W.. Start %ld, Count %ld ", rw ? "writing" : "reading",
 		       dev_num, start_blk, blkcnt);
+		sprintf(run_cmd, "mmc %s %d 0x%lx 0x%lx 0x%lx",
+			rw ? "write" : "read", dev_num,
+			addr, start_blk, blkcnt);
+		run_command(run_cmd, dev_num);
+		printf("completed\n");
+		return 1;
+	}
+
+	/* Environment */
+	if (attribute == 0x4) {
+		for (i = 0, image = raw_area_control.image; i < 15; i++) {
+			if (image[i].attribute == attribute)
+				break;
+		}
+		start_blk = image[i].start_blk;
+		blkcnt = image[i].used_blk;
+		printf("%s %d Environment.. Start %ld, Count %ld ",
+				rw ? "writing" : "reading",
+				dev_num, start_blk, blkcnt);
 		sprintf(run_cmd, "mmc %s %d 0x%lx 0x%lx 0x%lx",
 			rw ? "write" : "read", dev_num,
 			addr, start_blk, blkcnt);
