@@ -1725,6 +1725,13 @@ static int set_partition_table_sdmmc()
 	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD;
 	pcount++;
 
+	/* Environment */
+	strcpy(ptable[pcount].name, "env");
+	ptable[pcount].start = 0;
+	ptable[pcount].length = 0;
+	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD;
+	pcount++;
+
 	/* Kernel */
 	strcpy(ptable[pcount].name, "kernel");
 	ptable[pcount].start = 0;
