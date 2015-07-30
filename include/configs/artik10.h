@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2013 Samsung Electronics
+ * Copyright (C) 2015 Samsung Electronics
  *
- * Configuration settings for the SAMSUNG UNIVERSAL5422 (EXYNOS5422) board.
+ * Configuration settings for the SAMSUNG ARTIK10 (EXYNOS5422) board.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -207,8 +207,11 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_MMC
-#define CONFIG_CMD_EXT2
+#define CONFIG_CMD_EXT4
 #define CONFIG_CMD_FAT
+
+#define CONFIG_CMD_MOVI
+#define CONFIG_CMD_MOVINAND
 #define CONFIG_CMD_BOOTZ
 
 #define CONFIG_BOOTDELAY		3
@@ -276,22 +279,7 @@
 #define SDMMC_DEV_OFFSET			0x00000000
 #define EMMC_DEV_OFFSET				0x00000014
 
-#ifdef CONFIG_CPU_EXYNOS5422_EVT0
-#ifdef CONFIG_SECURE_BOOT
-#define CONFIG_BOOTCOMMAND	"emmc open 0;movi r z f 0 40000000;emmc close 0;" \
-                                "movi read kernel 0 40008000;movi read rootfs 0 41000000 100000;bootz 40008000 41000000"
-#else
-/*#define CONFIG_BOOTCOMMAND	"movi read kernel 0 40008000;movi read rootfs 0 41000000 100000;bootz 40008000 41000000"*/
-#define CONFIG_BOOTCOMMAND	"movi read kernel 0 40008000;bootz 40008000"
-#endif
-#else
-#ifdef CONFIG_SECURE_BOOT
-#define CONFIG_BOOTCOMMAND	"emmc open 0;movi r z f 0 20000000;emmc close 0;" \
-                                "movi read kernel 0 20008000;movi read rootfs 0 21000000 100000;bootz 20008000 21000000"
-#else
-#define CONFIG_BOOTCOMMAND	"movi read kernel 0 20008000;movi read rootfs 0 21000000 100000;bootz 20008000 21000000"
-#endif
-#endif
+#define CONFIG_BOOTCOMMAND	"run mmcboot"
 
 #ifdef CONFIG_RAMDUMP_MODE
 #define CONFIG_BOOTCOMMAND_RAMDUMP	"fastboot"
@@ -376,7 +364,7 @@
 /* Configuration of ROOTFS_ATAGS */
 #define CONFIG_ROOTFS_ATAGS
 #ifdef CONFIG_ROOTFS_ATAGS
-#define CONFIG_EXTRA_ENV_SETTINGS       "rootfslen= 100000"
+#define CONFIG_ROOTFS_LEN		100000
 #endif
 
 /* U-boot copy size from boot Media to DRAM.*/
@@ -385,6 +373,55 @@
 #define CONFIG_DOS_PARTITION
 #define CFG_PARTITION_START	0x4000000
 #define CONFIG_IRAM_STACK	0x02074000
+
+/* GPT */
+#define CONFIG_RANDOM_UUID
+#define CONFIG_EFI_PARTITION
+#define CONFIG_PARTITION_UUIDS
+#define CONFIG_CMD_GPT
+#define CONFIG_CMD_PART
+
+#define CONFIG_KERNEL_PART_SIZE		8
+#define CONFIG_RAMDISK_PART_SIZE	16
+#define CONFIG_ROOTFS_PART_SIZE		3072
+#define CONFIG_RECOVERY_PARTITION
+
+#ifdef CONFIG_RECOVERY_PARTITION
+#define CONFIG_ROOTFS_OFFSET		49
+#else
+#define CONFIG_ROOTFS_OFFSET		25
+#endif
+
+#define CONFIG_ROOT_DEV		0
+#define CONFIG_ROOT_PART	1
+
+#define PARTS_DEFAULT \
+	"uuid_disk=${uuid_gpt_disk};" \
+	"name=rootfs,start=" __stringify(CONFIG_ROOTFS_OFFSET) "MiB,size=" \
+		__stringify(CONFIG_ROOTFS_PART_SIZE) "MiB,uuid=${uuid_gpt_rootfs};" \
+	"name=data,size=-,uuid=${uuid_gpt_data}\0"
+
+#define CONFIG_EXTRA_ENV_SETTINGS	\
+	"console=" CONFIG_DEFAULT_CONSOLE \
+	"consoleon=set console console=" CONFIG_DEFAULT_CONSOLE "; saveenv; reset\0" \
+	"consoleoff=set console console=ram; saveenv; reset\0" \
+	"rootfslen=" __stringify(CONFIG_ROOTFS_LEN) "\0"	\
+	"partitions=" PARTS_DEFAULT \
+	"rootdev=" __stringify(CONFIG_ROOT_DEV) "\0" \
+	"rootpart=" __stringify(CONFIG_ROOT_PART) "\0" \
+	"root_rw=rw\0"	\
+	"opts=loglevel=4\0"	\
+	"boot_cmd=movi read kernel 0 40008000;"			\
+		"movi read rootfs 0 43000000 1000000;"		\
+		"bootz 40008000 43000000\0"			\
+	"ramfsboot=setenv bootargs ${console} root=/dev/ram0 "	\
+		"rootfstype=ext2 initrd=0x43000000,"		\
+		__stringify(CONFIG_RAMDISK_PART_SIZE)"M ${opts};"	\
+		"run boot_cmd\0"	\
+	"mmcboot=setenv bootargs ${console} "			\
+		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
+		"${opts};run boot_cmd\0"	\
+	"bootcmd=run mmcboot\0"
 
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR - 0x1000000)
 
