@@ -158,8 +158,14 @@ static unsigned int download_bytes;
 static unsigned int download_error;
 
 #ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+#define CHUNK_SIZE		(CONFIG_FASTBOOT_CHUNK_SIZE * 1024 * 1024)
+#define CHUNK_BLK_COUNT		(CHUNK_SIZE / CFG_FASTBOOT_SDMMC_BLOCKSIZE)
 #define FASTBOOT_GETVAR_PART_TYPE	"partition-type"
+static unsigned int total_chunk;
+static unsigned int download_chunk;
+static unsigned int download_is_sparse;
 static fastboot_ptentry *download_ptn;
+static int download_done;
 #endif /* CONFIG_FASTBOOT_FLASH_CHUNK */
 
 /* To support the Android-style naming of flash */
@@ -231,6 +237,10 @@ static void reset_handler ()
 	download_bytes = 0;
 	//download_bytes_unpadded = 0;
 	download_error = 0;
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+	download_ptn = NULL;
+	download_done = download_is_sparse = total_chunk = download_chunk = 0;
+#endif
 }
 
 
@@ -506,8 +516,8 @@ static int write_to_ptn(struct fastboot_ptentry *ptn, unsigned int addr, unsigne
 #else
 #define	DEV_NUM 0
 #endif
-static int write_buffer_sdmmc(unsigned int addr, unsigned int base,
-		unsigned int len, int is_sparse)
+static int write_buffer_sdmmc(unsigned int addr, unsigned int buflen,
+		unsigned int base, unsigned int len, int is_sparse)
 {
 	int ret = 1;
 	char cmd[32], device[32], part[32], part2[32];
@@ -542,73 +552,8 @@ static int write_buffer_sdmmc(unsigned int addr, unsigned int base,
 
 		printf("Compressed ext4 image\n");
 
-#if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
-		nul_buf_align = calloc(sizeof(char), 512 * 1024 + 4);
-		if (nul_buf_align == NULL) {
-			printf("Error: calloc failed for nul_buf_align\n");
-			ret = 1;
-			return ret;
-		}
-		if (((unsigned int)nul_buf_align % 8) == 0)
-			nul_buf = nul_buf_align;
-		else
-			nul_buf = nul_buf_align + 4;
-#else
-		nul_buf = calloc(sizeof(char), 512 * 1024);
-#endif
-		if (nul_buf == NULL) {
-			printf("Error: calloc failed for nul_buf\n");
-			ret = 1;
-			return ret;
-		}
-
-		mmc = find_mmc_device(DEV_NUM);
-
-		if (bl_st&0x3ff) {
-			mmc->block_dev.block_write(DEV_NUM, bl_st,
-					1024 - (bl_st & 0x3ff), nul_buf);
-
-			printf("*** erase start block 0x%x ***\n", bl_st);
-
-			bl_cnt = bl_cnt - (1024 - (bl_st & 0x3ff));
-			bl_st = (bl_st & (~0x3ff)) + 1024;
-		}
-
-		if (bl_cnt & 0x3ff) {
-			mmc->block_dev.block_write(DEV_NUM,
-					bl_st + bl_cnt - (bl_cnt & 0x3ff),
-					bl_cnt & 0x3ff, nul_buf);
-
-			printf("*** erase block length 0x%x ***\n", bl_cnt);
-
-			bl_cnt = bl_cnt - (bl_cnt & 0x3ff);
-		}
-
-#if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
-		free(nul_buf_align);
-#else
-		free(nul_buf);
-#endif
-
-		if (bl_cnt >> 10) {
-			argv[2] = buffer;
-			argv[3] = device;
-			argv[4] = start;
-			argv[5] = length;
-
-			sprintf(cmd, "erase");
-			sprintf(buffer, "user");
-			sprintf(device, "%d", DEV_NUM);
-			sprintf(start, "%x", bl_st);
-			sprintf(length, "%x", bl_cnt);
-			printf("mmc %s %s %s %s %s\n", argv[1], argv[2],
-					argv[3], argv[4], argv[5]);
-
-			ret = do_mmcops(NULL, 0, 6, argv);
-		} else
-			printf("*** erase block length too small ***\n");
-
-		ret = write_compressed_ext4((char *)addr, start);
+		ret = write_compressed_ext4((char *)addr, buflen, bl_st,
+					    bl_cnt);
 	}
 	return ret;
 }
@@ -642,9 +587,9 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 	if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_USE_MMC_CMD)
 	{
 		is_sparse = !check_compress_ext4((char *)addr, ptn->length);
-		ret = write_buffer_sdmmc(addr,
+		ret = write_buffer_sdmmc(addr, size,
 				ptn->start / CFG_FASTBOOT_SDMMC_BLOCKSIZE,
-				ptn->length / CFG_FASTBOOT_SDMMC_BLOCKSIZE,
+				size / CFG_FASTBOOT_SDMMC_BLOCKSIZE,
 				is_sparse);
 	} else if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD) {
 		argv[2] = part;
@@ -793,11 +738,88 @@ static void start_ramdump(void *buf)
 }
 #endif
 
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+static unsigned int check_chunk_downloaded(unsigned int download_bytes)
+{
+	if (download_bytes == CHUNK_SIZE ||
+	    (download_bytes == download_size - (download_chunk * CHUNK_SIZE)))
+		return 1;
+	else
+		return 0;
+}
+
+static int flash_chunk_data(const unsigned char *buffer,
+				unsigned int buffer_size, char *response)
+{
+	unsigned int transfer_size = download_size - download_bytes;
+	unsigned int start, length;
+	int ret;
+	if (buffer_size < transfer_size)
+		transfer_size = buffer_size;
+
+	/* Save the data to the transfer buffer */
+	memcpy(interface.transfer_buffer + download_bytes,
+		buffer, transfer_size);
+
+	download_bytes += transfer_size;
+
+	/* Skip until the buffer is reached to chunk size */
+	if (check_chunk_downloaded(download_bytes)) {
+		/* Check if it is sparse file */
+		if (download_chunk == 0) {
+			download_is_sparse = !check_compress_ext4(
+					(char *)interface.transfer_buffer,
+					download_ptn->length);
+		}
+
+		start = (download_ptn->start / CFG_FASTBOOT_SDMMC_BLOCKSIZE) +
+			(download_chunk * CHUNK_BLK_COUNT);
+		length = download_bytes / CFG_FASTBOOT_SDMMC_BLOCKSIZE;
+		if (download_bytes % CFG_FASTBOOT_SDMMC_BLOCKSIZE)
+			length++;
+		ret = write_buffer_sdmmc(interface.transfer_buffer,
+					 download_bytes, start, length,
+					 download_is_sparse);
+		if (ret) {
+			sprintf(response, "ERROR");
+			fastboot_tx_status(response, strlen(response),
+					   FASTBOOT_TX_ASYNC);
+			return 0;
+		}
+
+		download_bytes = 0;
+		download_chunk++;
+
+		printf("(%d/%d) downloaded and flashed successfully\n",
+				download_chunk, total_chunk);
+
+		if (download_chunk == total_chunk) {
+			download_done = 1;
+			sprintf(response, "OKAY");
+			fastboot_tx_status(response, strlen(response),
+					   FASTBOOT_TX_ASYNC);
+
+			printf("\ndownloading of %d bytes finished\n",
+					download_size);
+			download_bytes = download_size;
+			download_size = 0;
+		}
+	}
+
+	return 0;
+}
+#endif /* CONFIG_FASTBOOT_FLASH_CHUNK */
+
 static int download_data(const unsigned char *buffer,
 			 unsigned int buffer_size, char *response)
 {
 	/* Something to download */
 	if (buffer_size) {
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+		if (download_ptn)
+			return flash_chunk_data(buffer, buffer_size, response);
+#endif /* CONFIG_FASTBOOT_FLASH_CHUNK */
+
 		/* Handle possible overflow */
 		unsigned int transfer_size = download_size - download_bytes;
 
@@ -1015,15 +1037,24 @@ static int process_cmd_download(const char *cmdbuf, char *response)
 	/* Reset error */
 	download_error = 0;
 
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+	if (download_ptn) {
+		total_chunk = download_size / CHUNK_SIZE;
+		if (download_size % CHUNK_SIZE)
+			total_chunk++;
+	}
+#endif
 	printf("Starting download of %d bytes\n", download_size);
 
 	if (0 == download_size) {
 		/* bad user input */
 		sprintf(response, "FAILdata invalid size");
+#ifndef CONFIG_FASTBOOT_FLASH_CHUNK
 	} else if (download_size > interface.transfer_buffer_size) {
 		/* set download_size to 0 because this is an error */
 		download_size = 0;
 		sprintf(response, "FAILdata too large");
+#endif
 	} else {
 		/* The default case, the transfer fits
 		   completely in the interface buffer */
@@ -1239,39 +1270,47 @@ static int process_cmd_flash_env(const char *cmdbuf, char *response,
 	return 0;
 }
 
+static void process_cmd_download_result(int err, const char *name,
+				       char *response)
+{
+	if (err) {
+		printf("flashing '%s' failed\n", name);
+		sprintf(response, "FAILfailed to flash partition");
+	} else {
+		printf("partition '%s' flashed\n", name);
+		sprintf(response, "OKAY");
+	}
+}
+
 static int process_cmd_flash_normal(const char *cmdbuf, char *response,
 	struct fastboot_ptentry *ptn)
 {
+	int err;
 	/* Normal case */
 	if (OmPin == BOOT_ONENAND) {
 #if defined(CFG_FASTBOOT_ONENANDBSP)
-		if (write_to_ptn(ptn, (unsigned int)interface.transfer_buffer,
-				 download_bytes)) {
-			printf("flashing '%s' failed\n", ptn->name);
-			sprintf(response, "FAILfailed to flash partition");
-		} else {
-			printf("partition '%s' flashed\n", ptn->name);
-			sprintf(response, "OKAY");
-		}
+		err = write_to_ptn(ptn,
+				   (unsigned int)interface.transfer_buffer,
+				   download_bytes);
+		process_cmd_download_result(err, ptn->name, response);
 #endif
 	} else if (OmPin == BOOT_MMCSD) {
-		if (write_to_ptn_sdmmc(ptn,
-		    (unsigned int)interface.transfer_buffer, download_bytes)) {
-			printf("flashing '%s' failed\n", ptn->name);
-			sprintf(response, "FAILfailed to flash partition");
-		} else {
-			printf("partition '%s' flashed\n", ptn->name);
-			sprintf(response, "OKAY");
-		}
+		err = write_to_ptn_sdmmc(ptn,
+		      (unsigned int)interface.transfer_buffer, download_bytes);
+		process_cmd_download_result(err, ptn->name, response);
 	} else if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
-		if (write_to_ptn_sdmmc(ptn,
-		    (unsigned int)interface.transfer_buffer, download_bytes)) {
-			printf("flashing '%s' failed\n", ptn->name);
-			sprintf(response, "FAILfailed to flash partition");
-		} else {
-			printf("partition '%s' flashed\n", ptn->name);
-			sprintf(response, "OKAY");
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+		if (download_ptn) {
+			process_cmd_download_result(!download_done, ptn->name,
+						    response);
+			reset_handler();
+			return 0;
 		}
+#endif
+
+		err = write_to_ptn_sdmmc(ptn,
+		      (unsigned int)interface.transfer_buffer, download_bytes);
+		process_cmd_download_result(err, ptn->name, response);
 	}
 	return 0;
 }
