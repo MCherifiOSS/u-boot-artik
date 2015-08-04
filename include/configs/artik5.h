@@ -226,6 +226,11 @@
 #define CFG_FASTBOOT_ADDR_RAMDISK               (0x41000000)
 #define CFG_FASTBOOT_PAGESIZE                   (2048)  // Page size of booting device
 #define CFG_FASTBOOT_SDMMC_BLOCKSIZE            (512)   // Block size of sdmmc
+#define CONFIG_FASTBOOT_GET_MMC_PARTITIONS
+#define CONFIG_FASTBOOT_FLASH_CHUNK
+#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
+#define CONFIG_FASTBOOT_CHUNK_SIZE		64
+#endif
 
 #ifdef CONFIG_EFI_PARTITION
 #define CONFIG_PRI_GPT_SIZE	(34 * 512)
