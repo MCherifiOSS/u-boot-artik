@@ -1372,10 +1372,42 @@ static int process_cmd_flash(const char *cmdbuf, char *response)
 	return 0;
 }
 
+static int process_cmd_format(const char *cmdbuf, char *response)
+{
+	char run_cmd[32];
+	int status = -1;
+	char *part_type = getenv("part_type");
+	if (!part_type)
+		part_type = "gpt";
+
+	if (!strcmp(part_type, "gpt")) {
+		sprintf(run_cmd, "gpt write mmc 0 $partitions");
+		status = run_command(run_cmd, 0);
+	}
+	return status;
+}
+
 static int process_cmd_oem(const char *cmdbuf, char *response)
 {
-	sprintf(response, "INFOunknown OEM command");
-	fastboot_tx_status(response, strlen(response), FASTBOOT_TX_ASYNC);
+	if (!strcmp("format", cmdbuf + 4)) {
+		if (process_cmd_format(cmdbuf, response) == -1) {
+			sprintf(response, "FAILpartition format");
+			fastboot_tx_status(response, strlen(response),
+					   FASTBOOT_TX_ASYNC);
+			return -1;
+		} else {
+			sprintf(response, "OKAY");
+			fastboot_tx_status(response, strlen(response),
+					FASTBOOT_TX_SYNC);
+#ifdef CONFIG_FASTBOOT_AUTO_REBOOT
+			do_reset_fastboot();
+#endif
+		}
+	} else {
+		sprintf(response, "INFOunknown OEM command");
+		fastboot_tx_status(response, strlen(response),
+				   FASTBOOT_TX_ASYNC);
+	}
 
 	sprintf(response, "OKAY");
 	fastboot_tx_status(response, strlen(response), FASTBOOT_TX_ASYNC);
