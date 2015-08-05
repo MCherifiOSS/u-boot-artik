@@ -505,6 +505,13 @@ int board_late_init(void)
 		setenv("bootcmd", CONFIG_FACTORY_RESET_BOOTCOMMAND);
 	}
 
+#ifdef CONFIG_FASTBOOT_AUTO_REBOOT
+	if (readl(&pmu->inform4) == CONFIG_FASTBOOT_AUTO_REBOOT_MODE) {
+		writel(0x0, &pmu->inform4);
+		run_command("fastboot", 0);
+	}
+#endif
+
 #ifdef CONFIG_RAMDUMP_MODE
 	/*   check reset status for ramdump */
 	if ((rst_stat & (WRESET | SYS_WDTRESET | ISP_ARM_WDTRESET))
