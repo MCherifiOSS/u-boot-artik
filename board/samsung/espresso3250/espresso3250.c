@@ -344,10 +344,14 @@ int menu_select(int i)
 #ifdef CONFIG_CMD_LCDTEXT
 		run_command("lcdtext 0 30 \"Formatting ...\"", 0);
 #endif
+#ifdef CONFIG_FACTORY_RESET_COMMAND
 		run_command(CONFIG_FACTORY_RESET_COMMAND, 0);
+#endif
 		break;
 	case 2:
+#ifdef CONFIG_BOOTCOMMAND_VIA_SCRIPT
 		setenv("bootcmd", CONFIG_BOOTCOMMAND_VIA_SCRIPT);
+#endif
 		break;
 	}
 	return 0;
@@ -451,7 +455,9 @@ int board_late_init(void)
 			run_command("lcdtext \"Copying Bootloaders\"", 0);
 			run_command("lcdtext \"   from microSD to eMMC...\"", 0);
 #endif
+#ifdef CONFIG_RECOVERYCOMMAND_1st_SDMMC
 			run_command(CONFIG_RECOVERYCOMMAND_1st_SDMMC, 0);
+#endif
 #ifdef CONFIG_CMD_LCDTEXT
 			run_command("lcdtext \"Done...\"", 0);
 #endif
@@ -485,7 +491,9 @@ int board_late_init(void)
 	if (second_boot_info == 1) {
 		printf("###Recovery Mode(SDMMC)###\n");
 		writel(0x0, CONFIG_SECONDARY_BOOT_INFORM_BASE);
+#ifdef CONFIG_RECOVERYCOMMAND_SDMMC
 		setenv("bootcmd", CONFIG_RECOVERYCOMMAND_SDMMC);
+#endif
 	}
 #ifdef CONFIG_EXYNOS_DA
 	second_boot_info = readl(CONFIG_SECONDARY_BOOT_INFORM_BASE);
@@ -500,10 +508,12 @@ int board_late_init(void)
 #endif
 #endif
 
+#ifdef CONFIG_FACTORY_RESET_COMMAND
 	if ((readl(&pmu->inform4)) == CONFIG_FACTORY_RESET_MODE) {
 		writel(0x0, &pmu->inform4);
 		setenv("bootcmd", CONFIG_FACTORY_RESET_BOOTCOMMAND);
 	}
+#endif
 
 #ifdef CONFIG_FASTBOOT_AUTO_REBOOT
 	if (readl(&pmu->inform4) == CONFIG_FASTBOOT_AUTO_REBOOT_MODE) {
