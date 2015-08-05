@@ -463,6 +463,12 @@ int board_late_init(void)
 		setenv("bootcmd", CONFIG_FACTORY_RESET_BOOTCOMMAND);
 	}
 
+#ifdef CONFIG_FASTBOOT_AUTO_REBOOT
+	if (readl(&pmu->sysip_dat0) == CONFIG_FASTBOOT_AUTO_REBOOT_MODE) {
+		writel(0x0, &pmu->sysip_dat0);
+		run_command("fastboot", 0);
+	}
+#endif
 	return 0;
 }
 
