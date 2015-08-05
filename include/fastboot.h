@@ -213,6 +213,9 @@ struct fastboot_ptentry
 /* Download and imediately flash this partition */
 #define FASTBOOT_PTENTRY_FLAGS_FLASH_CHUNK            0x00040000
 
+/* Use fat command to read/write this file */
+#define FASTBOOT_PTENTRY_FLAGS_USE_FAT_CMD            0x00080000
+
 /* Status values */
 #define FASTBOOT_OK			0
 #define FASTBOOT_ERROR			-1

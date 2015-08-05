@@ -577,7 +577,7 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 {
 	int ret = 1;
 	char cmd[32], device[32], part[32], part2[32];
-	char start[32], length[32], buffer[32], run_cmd[32];
+	char start[32], length[32], buffer[32], run_cmd[64];
 	char dev_num[2];
 	char *argv[6]  = { NULL, NULL, NULL, NULL, NULL, NULL, };
 	int argc = 0;
@@ -605,6 +605,21 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 				ptn->start / CFG_FASTBOOT_SDMMC_BLOCKSIZE,
 				size / CFG_FASTBOOT_SDMMC_BLOCKSIZE,
 				is_sparse);
+	} else if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_USE_FAT_CMD) {
+		char *file_name;
+
+		if (!strcmp(ptn->name, "kernel"))
+			file_name = getenv("kernel_file");
+		else if (!strcmp(ptn->name, "dtb"))
+			file_name = getenv("fdtfile");
+		else if (!strcmp(ptn->name, "ramdisk"))
+			file_name = getenv("initrd_file");
+		else
+			return -1;
+
+		sprintf(run_cmd, "fatwrite mmc %d:1 0x%x %s 0x%x",
+			DEV_NUM, addr, file_name, size);
+		ret = run_command(run_cmd, 0);
 	} else if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD) {
 		argv[2] = part;
 		argv[3] = dev_num;
@@ -1350,9 +1365,11 @@ static int process_cmd_flash(const char *cmdbuf, char *response)
 	LCD_setprogress(100);
 #endif
 
+#ifdef CONFIG_ANDROID_PARTITIONS
 	/* Special case: boot.img */
 	if (!strcmp("boot", cmdbuf + 6))
 		return process_cmd_flash_boot(cmdbuf, response);
+#endif
 
 	ptn = fastboot_flash_find_ptn(cmdbuf + 6);
 	if (ptn == 0)
@@ -1495,7 +1512,6 @@ static int rx_handler (const unsigned char *buffer, unsigned int buffer_size)
 		LCD_setprogress(0);
 #endif
 	} /* End of command */
-
 ret_free:
 	free(response);
 	return ret;
@@ -1828,14 +1844,21 @@ static int set_partition_table_sdmmc()
 	strcpy(ptable[pcount].name, "kernel");
 	ptable[pcount].start = 0;
 	ptable[pcount].length = 0;
-	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD;
+	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_FAT_CMD;
 	pcount++;
 
 	/* Ramdisk */
 	strcpy(ptable[pcount].name, "ramdisk");
 	ptable[pcount].start = 0;
 	ptable[pcount].length = PART_SIZE_ROOTFS;
-	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD;
+	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_FAT_CMD;
+	pcount++;
+
+	/* Devicetree */
+	strcpy(ptable[pcount].name, "dtb");
+	ptable[pcount].start = 0;
+	ptable[pcount].length = 0;
+	ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_FAT_CMD;
 	pcount++;
 
 #ifdef CONFIG_CHARGER_LOGO
