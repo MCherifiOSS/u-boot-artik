@@ -95,6 +95,20 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OmPin	readl(EXYNOS5_POWER_BASE + INFORM3_OFFSET)
 #endif
 
+#ifdef CONFIG_FASTBOOT_AUTO_REBOOT
+inline void do_reset_fastboot(void)
+{
+#ifdef CONFIG_CPU_EXYNOS3250
+	writel(CONFIG_FASTBOOT_AUTO_REBOOT_MODE,
+			EXYNOS4_POWER_BASE + INFORM4_OFFSET);
+#elif defined(CONFIG_CPU_EXYNOS5422_EVT0)
+	writel(CONFIG_FASTBOOT_AUTO_REBOOT_MODE,
+			EXYNOS5_POWER_BASE + INFORM4_OFFSET);
+#endif
+	do_reset(NULL, 0, 0, NULL);
+}
+#endif
+
 #if defined(CONFIG_FASTBOOT)
 
 /* Use do_reset for fastboot's 'reboot' command */
@@ -892,7 +906,14 @@ static int download_data(const unsigned char *buffer,
 static int process_cmd_reboot(const char *cmdbuf, char *response)
 {
 	if (!strcmp(cmdbuf + 6, "-bootloader")) {
+#ifdef CONFIG_FASTBOOT_AUTO_REBOOT
+		sprintf(response, "OKAY");
+		fastboot_tx_status(response, strlen(response),
+				   FASTBOOT_TX_SYNC);
+		do_reset_fastboot();
+#else
 		gflag_reboot = 1;
+#endif
 		return 0;
 	} else
 		memset(interface.transfer_buffer, 0x0,
