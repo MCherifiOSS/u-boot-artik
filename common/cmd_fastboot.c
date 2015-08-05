@@ -182,6 +182,9 @@ static fastboot_ptentry *download_ptn;
 static int download_done;
 #endif /* CONFIG_FASTBOOT_FLASH_CHUNK */
 
+static int emmc_dev;
+static int sd_dev = 1;
+
 /* To support the Android-style naming of flash */
 #define MAX_PTN 16
 static fastboot_ptentry ptable[MAX_PTN];
@@ -543,7 +546,6 @@ static int write_buffer_sdmmc(unsigned int addr, unsigned int buflen,
 #if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
 	char *nul_buf_align;
 #endif
-	struct mmc *mmc;
 
 	argv[1] = cmd;
 	sprintf(cmd, "write");
@@ -554,7 +556,7 @@ static int write_buffer_sdmmc(unsigned int addr, unsigned int buflen,
 		argv[4] = start;
 		argv[5] = length;
 
-		sprintf(device, "mmc %d", DEV_NUM);
+		sprintf(device, "mmc %d", emmc_dev);
 		sprintf(buffer, "0x%x", addr);
 		sprintf(start, "0x%x", base);
 		sprintf(length, "0x%x", len);
@@ -585,7 +587,6 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 #if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
 	char *nul_buf_align;
 #endif
-	struct mmc *mmc;
 	int is_sparse;
 
 	if ((ptn->length != 0) && (size > ptn->length)) {
@@ -618,13 +619,13 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 			return -1;
 
 		sprintf(run_cmd, "fatwrite mmc %d:1 0x%x %s 0x%x",
-			DEV_NUM, addr, file_name, size);
+			emmc_dev, addr, file_name, size);
 		ret = run_command(run_cmd, 0);
 	} else if (ptn->flags & FASTBOOT_PTENTRY_FLAGS_USE_MOVI_CMD) {
 		argv[2] = part;
 		argv[3] = dev_num;
 		argv[4] = buffer;
-		sprintf(dev_num, "%d", DEV_NUM);
+		sprintf(dev_num, "%d", emmc_dev);
 
 		argc = 5;
 
@@ -1398,7 +1399,7 @@ static int process_cmd_format(const char *cmdbuf, char *response)
 		part_type = "gpt";
 
 	if (!strcmp(part_type, "gpt")) {
-		sprintf(run_cmd, "gpt write mmc 0 $partitions");
+		sprintf(run_cmd, "gpt write mmc %d $partitions", emmc_dev);
 		status = run_command(run_cmd, 0);
 	}
 	return status;
@@ -1768,10 +1769,12 @@ static int set_partition_table()
 static int get_mmc_partition_tables()
 {
 	int i, ret;
+	char mmc_dev[8];
 	block_dev_desc_t *dev_desc;
 	disk_partition_t info;
 
-	ret = get_device("mmc", "0", &dev_desc);
+	sprintf(mmc_dev, "%d", emmc_dev);
+	ret = get_device("mmc", mmc_dev, &dev_desc);
 	if (ret < 0)
 		return -1;
 
@@ -1801,7 +1804,7 @@ static int set_partition_table_sdmmc()
 	unsigned char pid;
 	char dev_num[2];
 
-	sprintf(dev_num, "%d", DEV_NUM);
+	sprintf(dev_num, "%d", emmc_dev);
 
 	pcount = 0;
 
@@ -1956,6 +1959,8 @@ int do_fastboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			break;
 		case BOOT_MMCSD:
+			emmc_dev = 1;
+			sd_dev = 0;
 		case BOOT_EMMC_4_4:
 		case BOOT_EMMC:
 			if (set_partition_table_sdmmc()) {
@@ -1968,11 +1973,6 @@ int do_fastboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			break;
 		}
-
-#if  0
-	if (set_partition_table())
-		return 1;
-#endif
 
 	if ((argc > 1) && (0 == strcmp(argv[1], "flash"))){
 		ptn = fastboot_flash_find_ptn(argv[2]);
