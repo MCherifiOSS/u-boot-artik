@@ -22,60 +22,26 @@
  * MA 02111-1307 USA
  */
 
-#ifndef __CONFIG_H
-#define __CONFIG_H
+#ifndef __ARTIK10_H
+#define __ARTIK10_H
 
 /* High Level Configuration Options */
-#define CONFIG_SAMSUNG				/* in a SAMSUNG core */
-#define CONFIG_S5P					/* S5P Family */
-#define CONFIG_EXYNOS5				/* which is in a Exynos5 Family */
-#define CONFIG_ARCH_EXYNOS			/* which is in a Exynos Family */
+#define CONFIG_EXYNOS5			/* which is in a Exynos5 Family */
 #define CONFIG_ARCH_EXYNOS5	        /* which is in a Exynos5 Family */
 #define CONFIG_CPU_EXYNOS5420		/* which is in a Exynos5420 */
 #define CONFIG_CPU_EXYNOS5422		/* which is in a Exynos5422 */
 #define CONFIG_CPU_EXYNOS5422_EVT0	/* which is in a Exynos5422 EVT0 */
 #define CONFIG_MACH_ARTIK10		/* which is in a ARTIK10 */
+#define CONFIG_MACH_TYPE		MACH_TYPE_SMDK5422
 
-#include <asm/arch/cpu.h>			/* get chip and board defs */
-
-#define CONFIG_ARCH_CPU_INIT
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
+#include <configs/artik_common.h>
 
 /* TRUSTZONE */
-#define CONFIG_TRUSTZONE_ENABLE
-#ifdef CONFIG_TRUSTZONE_ENABLE
-#undef CONFIG_TZPC
-#define CONFIG_SMC_CMD
 #define CONFIG_TRUSTZONE_RESERVED_DRAM  0x1600000
-#else
-#define CONFIG_TRUSTZONE_RESERVED_DRAM  0x0
-#define CONFIG_TZPC
-#undef CONFIG_SMC_CMD
-#endif
 
-/* Configuration of bl1 partition size */
-#define CONFIG_BL_MONITOR
-
-/* Configuration of secure boot */
-#undef CONFIG_UBOOT_SECURE_BOOT
-#undef CONFIG_TZSW_SECURE_BOOT
-#undef CONFIG_SECURE_BOOT
-
-#ifdef CONFIG_SECURE_BOOT
-#define CONFIG_UBOOT_SECURE_BOOT
-#define CONFIG_TZSW_SECURE_BOOT
-#define CONFIG_SECURE_ROOTFS
-#define CONFIG_SECURE_KERNEL_SIZE       0x400000
-#define CONFIG_SECURE_ROOTFS_SIZE       0x100000
-#ifdef CONFIG_CPU_EXYNOS5422_EVT0
-#define CONFIG_SECURE_KERNEL_BASE       0x40008000
-#define CONFIG_SECURE_ROOTFS_BASE       0x41000000
-#else
-#define CONFIG_SECURE_KERNEL_BASE       0x20008000
-#define CONFIG_SECURE_ROOTFS_BASE       0x21000000
-#endif
-#endif
+#define CONFIG_SPL_TEXT_BASE		0x02027000
+#define CONFIG_PHY_IRAM_BASE            (0x02020000)
+#define CONFIG_PHY_IRAM_NS_BASE         (CONFIG_PHY_IRAM_BASE + 0x53000)
 
 /* Power Management is enabled */
 #define CONFIG_PM
@@ -85,138 +51,17 @@
 #define CONFIG_PM_VDD_G3D	1.00
 #define CONFIG_PM_VDD_MIF	1.10
 
-/* Bootloader Recovery */
-#define CONFIG_RECOVERY_MODE
-
-/* RAMDUMP MODE */
-#define CONFIG_RAMDUMP_MODE	0xD
-
-/* Keep L2 Cache Disabled */
-#define CONFIG_SYS_DCACHE_OFF
-
-#ifdef CONFIG_CPU_EXYNOS5422_EVT0
-#define CONFIG_SYS_SDRAM_BASE		0x40000000
-#else
-#define CONFIG_SYS_SDRAM_BASE		0x20000000
-#endif
-#define CONFIG_SYS_TEXT_BASE		0x43E00000
-#define CONFIG_SPL_TEXT_BASE		0x02027000
-
-/* input clock of PLL: SMDK5422 has 24MHz input clock */
-#define CONFIG_SYS_CLK_FREQ		24000000
-
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_INITRD_TAG
-#define CONFIG_REVISION_TAG
-#define CONFIG_CMDLINE_EDITING
-
-#define CONFIG_MACH_TYPE		MACH_TYPE_SMDK5422
-
-/* iRAM information */
-#define CONFIG_PHY_IRAM_BASE            (0x02020000)
-#define CONFIG_PHY_IRAM_NS_BASE         (CONFIG_PHY_IRAM_BASE + 0x53000)
-
-/* Power Down Modes */
-#define S5P_CHECK_SLEEP			0x00000BAD
-#define S5P_CHECK_DIDLE			0xBAD00000
-#define S5P_CHECK_LPA			0xABAD0000
-
-/* Offset for OM status registers */
-#define OM_STATUS_OFFSET                0x0
-
-/* Offset for inform registers */
-#define INFORM0_OFFSET			0x800
-#define INFORM1_OFFSET			0x804
-#define INFORM2_OFFSET			0x808
-#define INFORM3_OFFSET			0x80C
-#define INFORM4_OFFSET			0x810
-
-/* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (1 << 20))
-
 /* select serial console configuration */
-#define CONFIG_SERIAL_MULTI
 #define CONFIG_SERIAL3			/* use SERIAL 3 */
-#define CONFIG_BAUDRATE			115200
 #define EXYNOS5_DEFAULT_UART_OFFSET	0x010000
 
-#define TZPC_BASE_OFFSET		0x10000
-
 /* SD/MMC configuration */
-#define CONFIG_GENERIC_MMC
-#define CONFIG_MMC
-#define CONFIG_SDHCI
-#define CONFIG_S5P_MSHC
-#define CONFIG_S5P_SDHCI
 #define CONFIG_MMC_64BIT_BUS
-
-#if defined(CONFIG_S5P_MSHC)
-#define CONFIG_MMC_SMU_INIT
-#define CONFIG_MMC_EARLY_INIT
-#define MMC_MAX_CHANNEL		4
-#define USE_MMC0
-#define USE_MMC2
-
-#define PHASE_DEVIDER		4
 
 #define SDR_CH0			0x03030003
 #define DDR_CH0			0x03020001
-
 #define SDR_CH2			0x03020001
 #define DDR_CH2			0x03030002
-
-#define SDR_CH4			0x0
-#define DDR_CH4			0x0
-#endif
-
-/*
- * Boot configuration
- */
-#define BOOT_ONENAND		0x1
-#define BOOT_NAND		0x40000
-#define BOOT_MMCSD		0x3
-#define BOOT_NOR		0x4
-#define BOOT_SEC_DEV		0x5
-#define BOOT_EMMC		0x6
-#define BOOT_EMMC_4_4		0x7
-#define BOOT_USB		0x100
-
-/*
- *  Boot device
- */
-#define SDMMC_CH2		0x0
-#define SDMMC_CH0		0x4
-#define EMMC			0x14
-#define SATA			0x18
-#define SPI_SF			0x28
-#define SFMC			0x34
-#define USB			0x40
-
-#define CONFIG_BOARD_EARLY_INIT_F
-#define CONFIG_BOARD_LATE_INIT
-
-/* PWM */
-#define CONFIG_PWM
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-
-/* Command definition*/
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_FAT
-
-#define CONFIG_CMD_MOVI
-#define CONFIG_CMD_MOVINAND
-#define CONFIG_CMD_BOOTZ
-
-#define CONFIG_BOOTDELAY		3
-#define CONFIG_ZERO_BOOTDELAY_CHECK
 
 /* USB */
 #define CONFIG_CMD_USB
@@ -226,23 +71,16 @@
 
 /* OHCI : Host 1.0 */
 #define CONFIG_USB_OHCI
+
 #define CONFIG_EXYNOS_USBD3
 #undef CONFIG_USB_CPUMODE
 
-#ifdef CONFIG_EXYNOS_USBD3
-#ifdef CONFIG_MACH_UNIVERSAL5410
-#define CONFIG_EXYNOS_USBD3_CH1
-#else
 #define CONFIG_EXYNOS_USBD3_CH0
-/*#define CONFIG_EXYNOS_USBD3_CH1*/
-#endif
-#else
-#undef CONFIG_S3C_USBD
-#endif
 
-#define USBD_DOWN_ADDR			0x40000000
 #define EXYNOS_SYSREG_BASE		EXYNOS5_SYSREG_BASE
 #define EXYNOS_POWER_BASE		EXYNOS5_POWER_BASE
+
+#define CONFIG_REVISION_TAG
 
 /*
  * USBD 3.0 SFR
@@ -257,74 +95,18 @@
 
 #define CONFIG_EXYNOS_THERMAL
 #define CONFIG_EXYNOS_THERMAL_STABLE_TEMP	82
-/*
- * FASTBOOT
- */
-#define CONFIG_FASTBOOT
-#define CFG_FASTBOOT_SDMMCBSP
+
 /* Fastboot variables */
-#define CFG_FASTBOOT_TRANSFER_BUFFER		(CONFIG_SYS_SDRAM_BASE + 0x8000000)
-#define CFG_FASTBOOT_TRANSFER_BUFFER_SIZE	(0x30000000)   /* 768MB */
-#define CFG_FASTBOOT_ADDR_KERNEL		(CONFIG_SYS_SDRAM_BASE + 0x8000)
-#define CFG_FASTBOOT_ADDR_RAMDISK		(CONFIG_SYS_SDRAM_BASE + 0x1000000)
-#define CFG_FASTBOOT_PAGESIZE			(2048)  // Page size of booting device
-#define CFG_FASTBOOT_SDMMC_BLOCKSIZE		(512)   // Block size of sdmmc
-#ifdef CONFIG_MMC_64BIT_BUS
-#define CFG_FASTBOOT_MMC_BUFFER			(CONFIG_SYS_SDRAM_BASE + 0x58000000)
-#endif
-#define CONFIG_FASTBOOT_GET_MMC_PARTITIONS
-#define CONFIG_FASTBOOT_FLASH_CHUNK
-#ifdef CONFIG_FASTBOOT_FLASH_CHUNK
-#define CONFIG_FASTBOOT_CHUNK_SIZE		64
-#endif
-
-#define CONFIG_FASTBOOT_AUTO_REBOOT
-#define CONFIG_FASTBOOT_AUTO_REBOOT_MODE	0x3
-
+#define CFG_FASTBOOT_MMC_BUFFER			(CONFIG_SYS_SDRAM_BASE + \
+						0x58000000)
 /* MMC SPL */
-#define CONFIG_SPL
 #define IROM_FNPTR_BASE				0x02020030
 #define SECCOND_BOOT_INFORM_OFFSET		0x00000004
-#define SDMMC_DEV_OFFSET			0x00000000
-#define EMMC_DEV_OFFSET				0x00000014
-
-#define CONFIG_BOOTCOMMAND	"run mmcboot"
-
-#ifdef CONFIG_RAMDUMP_MODE
-#define CONFIG_BOOTCOMMAND_RAMDUMP	"fastboot"
-#endif
-
-#define CONFIG_BOOTCOMMAND2 ""
-
-/* Configuration for factory reset mode */
-#define CONFIG_FACTORY_RESET_MODE       0xf
-#define CONFIG_FACTORY_RESET_BOOTCOMMAND        \
-                "ext3format mmc 0:3;ext3format mmc 0:4;"		\
-                "movi read kernel 0 20008000;"				\
-                "movi read rootfs 0 21000000 100000;"			\
-                "bootz 20008000 21000000"
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
 #define CONFIG_SYS_PROMPT		"ARTIK10 # "
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
-#define CONFIG_SYS_PBSIZE		384	/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
 #define CONFIG_DEFAULT_CONSOLE		"console=ttySAC3,115200n8\0"
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-/* memtest works on */
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x5E00000)
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x3E00000)
-
-#define CONFIG_SYS_HZ			1000
-
-#define CONFIG_RD_LVL
-
-/* Stack sizes */
-#define CONFIG_STACKSIZE		(256 << 10)	/* 256KB */
 
 #define CONFIG_NR_DRAM_BANKS	8
 #define SDRAM_BANK_SIZE		(256UL << 20UL)	/* 256 MB */
@@ -356,100 +138,18 @@
 #define PHYS_SDRAM_12_SIZE       (SDRAM_BANK_SIZE -                            \
                                                CONFIG_TRUSTZONE_RESERVED_DRAM)
 
-#define CONFIG_SYS_MONITOR_BASE	0x00000000
-
-/* FLASH and environment organization */
-#define CONFIG_SYS_NO_FLASH
-#undef CONFIG_CMD_IMLS
 #define CONFIG_IDENT_STRING		" for ARTIK10"
 
-#define CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV		0
-
-/* Configuration of ENV size on mmc */
-#define CONFIG_ENV_SIZE		(16 << 10)	/* 16 KB */
-#include <asm/arch/movi_partition.h>
-
-/* Configuration of ROOTFS_ATAGS */
-#define CONFIG_ROOTFS_ATAGS
-#ifdef CONFIG_ROOTFS_ATAGS
-#define CONFIG_ROOTFS_LEN		100000
-#endif
-
-/* U-boot copy size from boot Media to DRAM.*/
-#define BL2_START_OFFSET	(CONFIG_BL2_OFFSET/512)
-#define BL2_SIZE_BLOC_COUNT	(CONFIG_BL2_SIZE/512)
-#define CONFIG_DOS_PARTITION
 #define CFG_PARTITION_START	0x4000000
 #define CONFIG_IRAM_STACK	0x02074000
 
-/* GPT */
-#define CONFIG_RANDOM_UUID
-#define CONFIG_EFI_PARTITION
-#define CONFIG_PARTITION_UUIDS
-#define CONFIG_CMD_GPT
-#define CONFIG_CMD_PART
-
-#define CONFIG_KERNEL_PART_SIZE		8
-#define CONFIG_RAMDISK_PART_SIZE	16
-#define CONFIG_ROOTFS_PART_SIZE		3072
-#define CONFIG_RECOVERY_PARTITION
-
-#ifdef CONFIG_RECOVERY_PARTITION
-#define CONFIG_ROOTFS_OFFSET		49
-#else
-#define CONFIG_ROOTFS_OFFSET		25
-#endif
-
-#define CONFIG_ROOT_DEV		0
-#define CONFIG_ROOT_PART	1
-
-#define PARTS_DEFAULT \
-	"uuid_disk=${uuid_gpt_disk};" \
-	"name=rootfs,start=" __stringify(CONFIG_ROOTFS_OFFSET) "MiB,size=" \
-		__stringify(CONFIG_ROOTFS_PART_SIZE) "MiB,uuid=${uuid_gpt_rootfs};" \
-	"name=data,size=-,uuid=${uuid_gpt_data}\0"
-
-#define CONFIG_EXTRA_ENV_SETTINGS	\
-	"console=" CONFIG_DEFAULT_CONSOLE \
-	"consoleon=set console console=" CONFIG_DEFAULT_CONSOLE "; saveenv; reset\0" \
-	"consoleoff=set console console=ram; saveenv; reset\0" \
-	"rootfslen=" __stringify(CONFIG_ROOTFS_LEN) "\0"	\
-	"partitions=" PARTS_DEFAULT \
-	"rootdev=" __stringify(CONFIG_ROOT_DEV) "\0" \
-	"rootpart=" __stringify(CONFIG_ROOT_PART) "\0" \
-	"root_rw=rw\0"	\
-	"opts=loglevel=4\0"	\
-	"boot_cmd=movi read kernel 0 40008000;"			\
-		"movi read rootfs 0 43000000 1000000;"		\
-		"bootz 40008000 43000000\0"			\
-	"ramfsboot=setenv bootargs ${console} root=/dev/ram0 "	\
-		"rootfstype=ext2 initrd=0x43000000,"		\
-		__stringify(CONFIG_RAMDISK_PART_SIZE)"M ${opts};"	\
-		"run boot_cmd\0"	\
-	"mmcboot=setenv bootargs ${console} "			\
-		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
-		"${opts};run boot_cmd\0"	\
-	"bootcmd=run mmcboot\0"
-
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR - 0x1000000)
-
-/* Ethernet Controllor Driver */
-#ifdef CONFIG_CMD_NET
-#define CONFIG_NET_MULTI
-#endif /*CONFIG_CMD_NET*/
-
-/* Disable devicetree support */
-/* #define CONFIG_OF_LIBFDT */
 
 /* Base address for secondary boot information */
 #define CONFIG_SECONDARY_BOOT_INFORM_BASE	(CONFIG_SYS_TEXT_BASE - 0x8)
 
-/* Offset for pmu reset status */
-#define RST_STAT_OFFSET			0x404
-
 /* RST_STAT */
 #define WRESET				(1 << 10)
-#define SYS_WDTRESET		(1 << 9)
+#define SYS_WDTRESET			(1 << 9)
 
-#endif	/* __CONFIG_H */
+#endif	/* __ARTIK10_H */
