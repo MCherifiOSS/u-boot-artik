@@ -458,10 +458,12 @@ int board_late_init(void)
 	}
 #endif
 
+#ifdef CONFIG_FACTORY_RESET_BOOTCOMMAND
 	if ((readl(&pmu->sysip_dat0)) == CONFIG_FACTORY_RESET_MODE) {
 		writel(0x0, &pmu->sysip_dat0);
 		setenv("bootcmd", CONFIG_FACTORY_RESET_BOOTCOMMAND);
 	}
+#endif
 
 #ifdef CONFIG_FASTBOOT_AUTO_REBOOT
 	if (readl(&pmu->sysip_dat0) == CONFIG_FASTBOOT_AUTO_REBOOT_MODE) {
