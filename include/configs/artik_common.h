@@ -193,6 +193,7 @@
 #define CONFIG_CMD_MMC
 #define CONFIG_CMD_EXT4
 #define CONFIG_CMD_FAT
+#define CONFIG_FAT_WRITE
 
 /* GPT */
 #define CONFIG_RANDOM_UUID
@@ -204,6 +205,8 @@
 #define CONFIG_CMD_MOVI
 #define CONFIG_CMD_MOVINAND
 #define CONFIG_CMD_BOOTZ
+
+#define CONFIG_OF_LIBFDT
 
 #define CONFIG_BOOTDELAY		3
 #define CONFIG_ZERO_BOOTDELAY_CHECK
@@ -223,46 +226,50 @@
 #define CONFIG_ROOTFS_ATAGS
 #define CONFIG_ROOTFS_LEN		100000
 
-#define CONFIG_KERNEL_PART_SIZE		8
-#define CONFIG_RAMDISK_PART_SIZE	16
+#define CONFIG_BOOT_PART_SIZE		64
 #define CONFIG_ROOTFS_PART_SIZE		3072
-#define CONFIG_RECOVERY_PARTITION
-
-#ifdef CONFIG_RECOVERY_PARTITION
-#define CONFIG_ROOTFS_OFFSET		49
-#else
-#define CONFIG_ROOTFS_OFFSET		25
-#endif
 
 #define CONFIG_ROOT_DEV		0
-#define CONFIG_ROOT_PART	1
+#define CONFIG_BOOT_PART	1
+#define CONFIG_ROOT_PART	2
 
-#define PARTS_DEFAULT \
-	"uuid_disk=${uuid_gpt_disk};" \
-	"name=rootfs,start=" __stringify(CONFIG_ROOTFS_OFFSET) "MiB,size=" \
-		__stringify(CONFIG_ROOTFS_PART_SIZE) "MiB,uuid=${uuid_gpt_rootfs};" \
+#define PARTS_DEFAULT							\
+	"uuid_disk=${uuid_gpt_disk};"					\
+	"name=boot,start=1MiB,size=" __stringify(CONFIG_BOOT_PART_SIZE) \
+		"MiB,uuid=${uuid_gpt_boot};"				\
+	"name=rootfs,size=" __stringify(CONFIG_ROOTFS_PART_SIZE)	\
+		"MiB,uuid=${uuid_gpt_rootfs};"				\
 	"name=data,size=-,uuid=${uuid_gpt_data}\0"
 
-#define CONFIG_EXTRA_ENV_SETTINGS	\
-	"console=" CONFIG_DEFAULT_CONSOLE \
-	"consoleon=set console console=" CONFIG_DEFAULT_CONSOLE "; saveenv; reset\0" \
-	"consoleoff=set console console=ram; saveenv; reset\0" \
-	"rootfslen=" __stringify(CONFIG_ROOTFS_LEN) "\0"	\
-	"partitions=" PARTS_DEFAULT \
-	"rootdev=" __stringify(CONFIG_ROOT_DEV) "\0" \
-	"rootpart=" __stringify(CONFIG_ROOT_PART) "\0" \
-	"root_rw=rw\0"	\
-	"opts=loglevel=4\0"	\
-	"boot_cmd=movi read kernel 0 40008000;"			\
-		"movi read rootfs 0 43000000 1000000;"		\
-		"bootz 40008000 43000000\0"			\
-	"ramfsboot=setenv bootargs ${console} root=/dev/ram0 "	\
-		"rootfstype=ext2 initrd=0x43000000,"		\
+#define CONFIG_EXTRA_ENV_SETTINGS					\
+	"console=" CONFIG_DEFAULT_CONSOLE				\
+	"consoleon=set console=" CONFIG_DEFAULT_CONSOLE			\
+		"; saveenv; reset\0"					\
+	"consoleoff=set console=ram; saveenv; reset\0"			\
+	"rootfslen=" __stringify(CONFIG_ROOTFS_LEN) "\0"		\
+	"partitions=" PARTS_DEFAULT					\
+	"rootdev=" __stringify(CONFIG_ROOT_DEV) "\0"			\
+	"rootpart=" __stringify(CONFIG_ROOT_PART) "\0"			\
+	"bootpart=" __stringify(CONFIG_BOOT_PART) "\0"			\
+	"root_rw=rw\0"							\
+	"opts=loglevel=4\0"						\
+	"fdtfile=" CONFIG_FDT_FILE "\0"					\
+	"kernel_file=zImage\0"						\
+	"kernel_addr=40008000\0"					\
+	"fdtaddr=40800000\0"						\
+	"initrd_file=initrd\0"						\
+	"initrd_addr=43000000\0"					\
+	"boot_cmd=fatload mmc 0:1 $kernel_addr $kernel_file;"		\
+		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
+		"fatload mmc 0:1 $initrd_addr $initrd_file;"		\
+		"bootz $kernel_addr $initrd_addr $fdtaddr\0"		\
+	"ramfsboot=setenv bootargs ${console} root=/dev/ram0 "		\
+		"rootfstype=ext2 initrd=0x$initrd_addr,"		\
 		__stringify(CONFIG_RAMDISK_PART_SIZE)"M ${opts};"	\
-		"run boot_cmd\0"	\
-	"mmcboot=setenv bootargs ${console} "			\
+		"run boot_cmd\0"					\
+	"mmcboot=setenv bootargs ${console} "				\
 		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
-		"${opts};run boot_cmd\0"	\
+		"${opts};run boot_cmd\0"				\
 	"bootcmd=run mmcboot\0"
 
 #endif /* __ARTIK_COMMON_H */

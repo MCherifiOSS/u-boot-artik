@@ -145,6 +145,8 @@
 
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR - 0x1000000)
 
+#define CONFIG_FDT_FILE		"exynos5422-artik10.dtb"
+
 /* Base address for secondary boot information */
 #define CONFIG_SECONDARY_BOOT_INFORM_BASE	(CONFIG_SYS_TEXT_BASE - 0x8)
 
