@@ -949,6 +949,15 @@ static int process_cmd_reboot(const char *cmdbuf, char *response)
 	return 0;
 }
 
+static void check_ptn_flash_chunk(const char *name)
+{
+	download_ptn = fastboot_flash_find_ptn(name);
+
+	if (download_ptn && !(download_ptn->flags &
+				FASTBOOT_PTENTRY_FLAGS_FLASH_CHUNK))
+		download_ptn = NULL;
+}
+
 static int process_cmd_getvar(const char *cmdbuf, char *response)
 {
 	/* getvar
@@ -971,12 +980,8 @@ static int process_cmd_getvar(const char *cmdbuf, char *response)
 #ifdef CONFIG_FASTBOOT_FLASH_CHUNK
 	} else if (!strncmp(cmdbuf + 7, FASTBOOT_GETVAR_PART_TYPE,
 				strlen(FASTBOOT_GETVAR_PART_TYPE))) {
-		download_ptn = fastboot_flash_find_ptn(cmdbuf + 7 +
+		check_ptn_flash_chunk(cmdbuf + 7 +
 				strlen(FASTBOOT_GETVAR_PART_TYPE) + 1);
-
-		if (download_ptn && !(download_ptn->flags &
-				FASTBOOT_PTENTRY_FLAGS_FLASH_CHUNK))
-			download_ptn = NULL;
 #endif
 	} else
 		fastboot_getvar(cmdbuf + 7, response + 4);
@@ -1390,7 +1395,7 @@ static int process_cmd_flash(const char *cmdbuf, char *response)
 	return 0;
 }
 
-static int process_cmd_format(const char *cmdbuf, char *response)
+static int process_cmd_format(void)
 {
 	char run_cmd[32];
 	int status = -1;
@@ -1408,7 +1413,7 @@ static int process_cmd_format(const char *cmdbuf, char *response)
 static int process_cmd_oem(const char *cmdbuf, char *response)
 {
 	if (!strcmp("format", cmdbuf + 4)) {
-		if (process_cmd_format(cmdbuf, response) == -1) {
+		if (process_cmd_format() == -1) {
 			sprintf(response, "FAILpartition format");
 			fastboot_tx_status(response, strlen(response),
 					   FASTBOOT_TX_ASYNC);
@@ -1940,18 +1945,9 @@ part_type_error:
 }
 #endif
 
-int do_fastboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+static int set_partition_table_from_bootmode(void)
 {
-	int ret = 1;
-	int check_timeout = 0;
-	uint64_t timeout_endtime = 0;
-	uint64_t timeout_ticks = 0;
-	long timeout_seconds = -1;
-	int continue_from_disconnect = 0;
-	struct fastboot_ptentry *ptn;
-	unsigned int addr, size;
-	gflag_reboot = 0;
-/* checking boot mode before to set partition table	*/
+	/* checking boot mode before to set partition table	*/
 	switch(OmPin) {
 		case BOOT_ONENAND:
 			if (set_partition_table()) {
@@ -1972,7 +1968,24 @@ int do_fastboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				return 1;
 			}
 			break;
-		}
+	}
+	return 0;
+}
+
+int do_fastboot(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	int ret = 1;
+	int check_timeout = 0;
+	uint64_t timeout_endtime = 0;
+	uint64_t timeout_ticks = 0;
+	long timeout_seconds = -1;
+	int continue_from_disconnect = 0;
+	struct fastboot_ptentry *ptn;
+	unsigned int addr, size;
+	gflag_reboot = 0;
+
+	if (set_partition_table_from_bootmode())
+		return -1;
 
 	if ((argc > 1) && (0 == strcmp(argv[1], "flash"))){
 		ptn = fastboot_flash_find_ptn(argv[2]);
@@ -2102,187 +2115,146 @@ U_BOOT_CMD(
 );
 
 
-#undef CONFIG_FASTBOOT_SDFUSE	// sdfuse is not implemented yet.
 #ifdef CONFIG_FASTBOOT_SDFUSE
-
-#include <part.h>
-#include <fat.h>
-#define CFG_FASTBOOT_SDFUSE_DIR		"/sdfuse"
-#ifdef CFG_FASTBOOT_SDMMCBSP
-#define CFG_FASTBOOT_SDFUSE_MMCDEV	0
-#else
-#define CFG_FASTBOOT_SDFUSE_MMCDEV	0
-#endif
-#define CFG_FASTBOOT_SDFUSE_MMCPART	1
 /*
  * part : partition name (This should be a defined name at ptable)
  * file : file to read
  */
+#include <fs.h>
+extern struct ext2fs_node *ext4fs_file;
 static int update_from_sd (char *part, char *file)
 {
 	int ret = 1;
+	long size;
+	unsigned long addr;
+	unsigned long offset = 0;
+	unsigned long count;
+	int file_len;
+	char command[64];
+	char response[64];
+	block_dev_desc_t *dev_desc;
+	disk_partition_t part_info;
 
-	/* Read file */
-	if (file != NULL)
-	{
-		long size;
-		unsigned long offset;
-		unsigned long count;
-		char filename[32];
-		block_dev_desc_t *dev_desc=NULL;
+	dev_desc = get_dev("mmc", sd_dev);
+	if (dev_desc == NULL) {
+		printf("** Invalid boot device **\n");
+		return -1;
+	}
 
-		printf("Partition: %s, File: %s/%s\n", part, CFG_FASTBOOT_SDFUSE_DIR, file);
-#ifdef CONFIG_USE_LCD
-		LCD_setfgcolor(0x2E8B57);
-		LCD_setprogress(100);
-#endif
-		dev_desc = get_dev("mmc", CFG_FASTBOOT_SDFUSE_MMCDEV);
-		if (dev_desc == NULL) {
-			printf("** Invalid boot device **\n");
-			return 1;
-		}
-		if (fat_register_device(dev_desc, CFG_FASTBOOT_SDFUSE_MMCPART) != 0) {
-			printf("** Invalid partition **\n");
-			return 1;
-		}
-		sprintf(filename, "%s/%s", CFG_FASTBOOT_SDFUSE_DIR, file);
-		offset = CFG_FASTBOOT_TRANSFER_BUFFER;
-		count = 0;
-		size = file_fat_read (filename, (unsigned char *) offset, count);
+	ret = get_partition_info(dev_desc, 1, &part_info);
+	if (ret) {
+		printf("Invalid partition\n");
+		return -1;
+	}
 
+	ret = ext4fs_probe(dev_desc, &part_info);
+	if (ret) {
+		printf("Cannot probe ext4 partition\n");
+		return -1;
+	}
+
+	reset_handler();
+	check_ptn_flash_chunk(part);
+
+	addr = CFG_FASTBOOT_TRANSFER_BUFFER;
+
+	file_len = ext4fs_open(file);
+	if (file_len < 0) {
+		printf("File not found %s\n", file);
+		return -1;
+	}
+
+	download_size = file_len;
+	if (download_ptn) {
+		total_chunk = download_size / CHUNK_SIZE;
+		if (download_size % CHUNK_SIZE)
+			total_chunk++;
+	}
+
+	while (1) {
+		count = file_len;
+		if (count > CHUNK_SIZE)
+			count = CHUNK_SIZE;
+
+		size = ext4fs_read_file(ext4fs_file, offset, count, addr);
 		if (size == -1) {
-			printf("Failed to read %s\n", filename);
-			return 1;
+			printf("Failed to read %s\n", file);
+			ret = -1;
+			goto err_out;
 		}
 
-		download_size = 0;	// should be 0
-		download_bytes = size;
+		if (download_ptn) {
+			flash_chunk_data(addr, size, response);
+			offset += size;
+			if (offset >= file_len) {
+				ret = 0;
+				break;
+			}
+		} else {
+			download_size = 0;
+			download_bytes = size;
 
-		printf("%ld (0x%08x) bytes read\n", size, size);
-	}
-	else {
-		printf("Partition: %s\n", part);
-
-		download_size = 0;	// should be 0
-		download_bytes = 0;
-	}
-
-	/* Write image into partition */
-	/* If file is empty or NULL, just erase the part. */
-	{
-		char command[32];
-
-		if (download_bytes == 0)
-			sprintf(command, "%s:%s", "erase", part);
-		else
-			sprintf(command, "%s:%s", "flash", part);
-
-		ret = rx_handler(command, sizeof(command));
+			printf("%ld (0x%08x) bytes read\n", size, size);
+			sprintf(command, "flash:%s", part);
+			ret = rx_handler(command, sizeof(command));
+			break;
+		}
 	}
 
+err_out:
+	ext4fs_close();
+	reset_handler();
 	return ret;
 }
 
-/* SD Fusing : read images from FAT partition of SD Card, and write it to boot device.
+/* SD Fusing : read images from EXT4 partition of SD Card,
+ * and write it to boot device.
  *
  * NOTE
  * - sdfuse is not a original code of fastboot
  * - Fusing image from SD Card is not a original part of Fastboot protocol.
- * - This command implemented at this file to re-use an existing code of fastboot */
+ * - This command implemented at this file
+ *   to re-use an existing code of fastboot */
 int do_sdfuse (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	int ret = 1;
 	int enable_reset = 0;
-	struct mmc *mmc = find_mmc_device(CFG_FASTBOOT_SDFUSE_MMCDEV);
+	struct mmc *mmc;
 
-	interface.nand_block_size	= CFG_FASTBOOT_PAGESIZE * 64;
-	interface.transfer_buffer	= (unsigned char *) CFG_FASTBOOT_TRANSFER_BUFFER;
-	interface.transfer_buffer_size	= CFG_FASTBOOT_TRANSFER_BUFFER_SIZE;
+	interface.transfer_buffer =
+		(unsigned char *)CFG_FASTBOOT_TRANSFER_BUFFER;
+	interface.transfer_buffer_size = CFG_FASTBOOT_TRANSFER_BUFFER_SIZE;
 
 	printf("[Fusing Image from SD Card.]\n");
 
-	if (set_partition_table())
-		return 1;
+	if (set_partition_table_from_bootmode())
+		return -1;
 
-	if ((argc == 2) && !strcmp(argv[1], "info"))
-	{
-		printf("sdfuse will read images from the followings:\n");
-		printf(" sd/mmc device  : mmc %d:%d\n",
-			CFG_FASTBOOT_SDFUSE_MMCDEV, CFG_FASTBOOT_SDFUSE_MMCPART);
-		printf(" directory      : %s\n", CFG_FASTBOOT_SDFUSE_DIR);
-		printf(" booting device : %s\n",
-#if defined(CFG_FASTBOOT_ONENANDBSP)
-			"OneNAND"
-#elif defined(CFG_FASTBOOT_NANDBSP)
-			"NAND"
-#elif defined(CFG_FASTBOOT_SDMMCBSP)
-			"MoviNAND"
-#else
-#error "Unknown booting device!"
-#endif
-#if defined(CONFIG_FUSED)
-			" (on eFused Chip)"
-#endif
-		);
-		return 0;
-	}
-	else if ((argc == 2) && !strcmp(argv[1], "flashall"))
-	{
-#ifdef CONFIG_USE_LCD
-		LCD_turnon();
-#endif
-
-		if (update_from_sd("boot", "boot.img"))
-			goto err_sdfuse;
-		if (update_from_sd("system", "system.img"))
-			goto err_sdfuse;
-		if (update_from_sd("userdata", NULL))
-			goto err_sdfuse;
-		if (update_from_sd("cache", NULL))
-			goto err_sdfuse;
-
-		enable_reset = 1;
+	if ((argc == 2) && !strcmp(argv[1], "format"))
+		ret = process_cmd_format();
+	else if ((argc == 2) && !strcmp(argv[1], "flashall")) {
+		update_from_sd("fwbl1", "bl1.bin");
+		update_from_sd("bl2", "bl2.bin");
+		update_from_sd("tzsw", "tzsw.bin");
+		update_from_sd("bootloader", "u-boot.bin");
+		update_from_sd("env", "params.bin");
+		if (update_from_sd("boot", "boot.img")) {
+			update_from_sd("kernel", getenv("kernel_file"));
+			update_from_sd("ramdisk", getenv("initrd_file"));
+			update_from_sd("dtb", getenv("fdtfile"));
+		}
+		update_from_sd("rootfs", "rootfs.img");
+		update_from_sd("data", "data.img");
 		ret = 0;
-	}
-	else if ((argc == 4) && !strcmp(argv[1], "flash"))
-	{
-#ifdef CONFIG_USE_LCD
-		LCD_turnon();
-#endif
-
+	} else if ((argc == 4) && !strcmp(argv[1], "flash")) {
 		if (update_from_sd(argv[2], argv[3]))
-			goto err_sdfuse;
+			return -1;
 
 		ret = 0;
-	}
-	else if ((argc == 3) && !strcmp(argv[1], "erase"))
-	{
-#ifdef CONFIG_USE_LCD
-		LCD_turnon();
-#endif
-
-		if (update_from_sd(argv[2], NULL))
-			goto err_sdfuse;
-
-		ret = 0;
-	}
-	else
-	{
+	} else {
 		printf("Usage:\n%s\n", cmdtp->usage);
 		return 1;
 	}
-
-
-
-err_sdfuse:
-#ifdef CONFIG_USE_LCD
-	LCD_setfgcolor(0x000010);
-	LCD_setleftcolor(0x000010);
-	LCD_setprogress(100);
-#endif
-
-	if (enable_reset)
-		do_reset (NULL, 0, 0, NULL);
 
 	return ret;
 }
@@ -2290,14 +2262,11 @@ err_sdfuse:
 U_BOOT_CMD(
 	sdfuse,		4,	1,	do_sdfuse,
 	"sdfuse  - read images from FAT partition of SD card and write them to booting device.\n",
-	"info                             - print primitive infomation.\n"
-	"sdfuse flashall                         - flash boot.img, system.img,\n"
-	"                                          erase userdata, cache, and reboot.\n"
+	"sdfuse flashall                         - flash all images\n"
+	"sdfuse format				 - format mmc partition\n"
 	"sdfuse flash <partition> [ <filename> ] - write a file to a partition.\n"
-	"sdfuse erase <partition>                - erase (format) a partition.\n"
 );
-#endif	// CONFIG_FASTBOOT_SDFUSE
-
+#endif	/* CONFIG_FASTBOOT_SDFUSE */
 
 /*
  * Android style flash utilties */
