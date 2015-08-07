@@ -261,11 +261,14 @@
 	"initrd_addr=43000000\0"					\
 	"boot_cmd=fatload mmc 0:1 $kernel_addr $kernel_file;"		\
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
+		"bootz $kernel_addr $initrd_addr $fdtaddr\0"		\
+	"boot_cmd_initrd=fatload mmc 0:1 $kernel_addr $kernel_file;"	\
+		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
 		"fatload mmc 0:1 $initrd_addr $initrd_file;"		\
 		"bootz $kernel_addr $initrd_addr $fdtaddr\0"		\
 	"ramfsboot=setenv bootargs ${console} root=/dev/ram0 "		\
 		"rootfstype=ext2 ${opts};"				\
-		"run boot_cmd\0"					\
+		"run boot_cmd_initrd\0"					\
 	"mmcboot=setenv bootargs ${console} "				\
 		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
 		"${opts};run boot_cmd\0"				\
