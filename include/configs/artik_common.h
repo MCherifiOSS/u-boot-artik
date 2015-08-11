@@ -264,7 +264,7 @@
 	"sdrecovery=sdfuse format; sdfuse flashall 2\0"			\
 	"boot_cmd=fatload mmc 0:1 $kernel_addr $kernel_file;"		\
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
-		"bootz $kernel_addr $initrd_addr $fdtaddr\0"		\
+		"bootz $kernel_addr - $fdtaddr\0"			\
 	"boot_cmd_initrd=fatload mmc 0:1 $kernel_addr $kernel_file;"	\
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
 		"fatload mmc 0:1 $initrd_addr $initrd_file;"		\
