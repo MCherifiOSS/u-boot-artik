@@ -239,9 +239,7 @@
 	"uuid_disk=${uuid_gpt_disk};"					\
 	"name=boot,start=1MiB,size=" __stringify(CONFIG_BOOT_PART_SIZE) \
 		"MiB,uuid=${uuid_gpt_boot};"				\
-	"name=rootfs,size=" __stringify(CONFIG_ROOTFS_PART_SIZE)	\
-		"MiB,uuid=${uuid_gpt_rootfs};"				\
-	"name=data,size=-,uuid=${uuid_gpt_data}\0"
+	"name=rootfs,size=-,uuid=${uuid_gpt_rootfs}\0"
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"console=" CONFIG_DEFAULT_CONSOLE				\
