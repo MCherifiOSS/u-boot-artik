@@ -32,9 +32,6 @@ static char residue_buf[512];
 
 #define ext4_printf(args, ...)
 
-static int write_raw_chunk(char* data, unsigned int sector, unsigned int sector_size);
-
-
 int check_compress_ext4(char *img_base, unsigned long long parti_size) {
 	ext4_file_header *file_header;
 
@@ -78,7 +75,8 @@ int check_compress_ext4(char *img_base, unsigned long long parti_size) {
 	return 0;
 }
 
-int write_raw_chunk(char* data, unsigned int sector, unsigned int sector_size) {
+static int write_raw_chunk(int mmc_dev, char *data, unsigned int sector,
+			   unsigned int sector_size) {
 	char run_cmd[64];
 #if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
 	unsigned char *tmp_align;
@@ -89,8 +87,9 @@ int write_raw_chunk(char* data, unsigned int sector, unsigned int sector_size) {
 		data = tmp_align;
 	}
 #endif
-	ext4_printf("write raw data in %d size %d \n", sector, sector_size);
-	sprintf(run_cmd,"mmc write 0 0x%x 0x%x 0x%x", (int)data, sector, sector_size);
+	ext4_printf("write raw data in %d size %d\n", sector, sector_size);
+	sprintf(run_cmd, "mmc write %d 0x%x 0x%x 0x%x", mmc_dev, (int)data,
+			sector, sector_size);
 	run_command(run_cmd, 0);
 
 	return 0;
@@ -122,7 +121,7 @@ void exit_compressed_ext4(void)
 	sector_base = 0;
 }
 
-int write_compressed_ext4(char *img_base, unsigned int buflen,
+int write_compressed_ext4(int mmc_dev, char *img_base, unsigned int buflen,
 			  unsigned int base, unsigned int length)
 {
 	unsigned int sector_size;
@@ -166,7 +165,8 @@ int write_compressed_ext4(char *img_base, unsigned int buflen,
 				 * and flash it */
 				memcpy(residue_buf + residue_bytes, img_base,
 						SECTOR_SIZE - residue_bytes);
-				write_raw_chunk(residue_buf, sector_base, 1);
+				write_raw_chunk(mmc_dev, residue_buf,
+						sector_base, 1);
 				/* Move a location of sector base */
 				sector_base++;
 				img_base += (SECTOR_SIZE - residue_bytes);
@@ -192,7 +192,7 @@ int write_compressed_ext4(char *img_base, unsigned int buflen,
 			}
 
 			if (sector_size) {
-				write_raw_chunk(img_base, sector_base,
+				write_raw_chunk(mmc_dev, img_base, sector_base,
 						sector_size);
 				sector_base += sector_size;
 				img_base += (sector_size << SECTOR_BITS);

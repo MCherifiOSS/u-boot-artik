@@ -184,6 +184,7 @@ static int download_done;
 
 static int emmc_dev;
 static int sd_dev = 1;
+static int force_emmc;
 
 /* To support the Android-style naming of flash */
 #define MAX_PTN 16
@@ -537,39 +538,20 @@ static int write_buffer_sdmmc(unsigned int addr, unsigned int buflen,
 		unsigned int base, unsigned int len, int is_sparse)
 {
 	int ret = 1;
-	char cmd[32], device[32], part[32], part2[32];
-	char start[32], length[32], buffer[32], run_cmd[32];
-	char dev_num[2];
-	char *argv[6]  = { NULL, NULL, NULL, NULL, NULL, NULL, };
-	int argc = 0;
-	char *nul_buf;
-#if defined(CONFIG_MMC_64BIT_BUS) || defined(CONFIG_CPU_EXYNOS5410_EVT2)
-	char *nul_buf_align;
-#endif
-
-	argv[1] = cmd;
-	sprintf(cmd, "write");
+	char run_cmd[64];
 
 	if (!is_sparse) {
-		argv[2] = device;
-		argv[3] = buffer;
-		argv[4] = start;
-		argv[5] = length;
-
-		sprintf(device, "mmc %d", emmc_dev);
-		sprintf(buffer, "0x%x", addr);
-		sprintf(start, "0x%x", base);
-		sprintf(length, "0x%x", len);
-
-		ret = do_mmcops(NULL, 0, 6, argv);
+		sprintf(run_cmd, "mmc write %d 0x%x 0x%x 0x%x", emmc_dev,
+				addr, base, len);
+		ret = run_command(run_cmd, 0);
 	} else {
 		uint bl_st = base;
 		uint bl_cnt = len;
 
 		printf("Compressed ext4 image\n");
 
-		ret = write_compressed_ext4((char *)addr, buflen, bl_st,
-					    bl_cnt);
+		ret = write_compressed_ext4(emmc_dev, (char *)addr, buflen,
+					    bl_st, bl_cnt);
 	}
 	return ret;
 }
@@ -632,7 +614,7 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 		/* use the partition name that can be understood by a command, movi */
 		if (!strcmp(ptn->name, "bootloader"))
 		{
-			if (OmPin == 7){
+			if (OmPin == 7 || force_emmc) {
 				argv[2] = part2;
 				argv[3] = part;
 				argv[4] = dev_num;
@@ -640,7 +622,7 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 				argc = 6;
 				strncpy(part2, "zero", 7);
 				strncpy(part, "u-boot", 7);
-				sprintf(run_cmd,"emmc open 0");
+				sprintf(run_cmd, "emmc open %d", emmc_dev);
 				run_command(run_cmd, 0);
 			}
 			else
@@ -649,14 +631,14 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 		}
 		else if (!strcmp(ptn->name, "fwbl1"))
 		{
-			if (OmPin == 7){
+			if (OmPin == 7 || force_emmc) {
 				argv[2] = part2;
 				argv[3] = ptn->name;
 				argv[4] = dev_num;
 				argv[5] = buffer;
 				argc = 6;
 				strncpy(part2, "zero", 7);
-				sprintf(run_cmd,"emmc open 0");
+				sprintf(run_cmd, "emmc open %d", emmc_dev);
 				run_command(run_cmd, 0);
 			}
 			else
@@ -665,14 +647,14 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 		}
 		else if (!strcmp(ptn->name, "bl2"))
 		{
-			if (OmPin == 7){
+			if (OmPin == 7 || force_emmc) {
 				argv[2] = part2;
 				argv[3] = ptn->name;
 				argv[4] = dev_num;
 				argv[5] = buffer;
 				argc = 6;
 				strncpy(part2, "zero", 7);
-				sprintf(run_cmd,"emmc open 0");
+				sprintf(run_cmd, "emmc open %d", emmc_dev);
 				run_command(run_cmd, 0);
 			}
 			else
@@ -681,14 +663,14 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 		}
 		else if (!strcmp(ptn->name, "tzsw"))
 		{
-			if (OmPin == 7){
+			if (OmPin == 7 || force_emmc) {
 				argv[2] = part2;
 				argv[3] = ptn->name;
 				argv[4] = dev_num;
 				argv[5] = buffer;
 				argc = 6;
 				strncpy(part2, "zero", 7);
-				sprintf(run_cmd,"emmc open 0");
+				sprintf(run_cmd, "emmc open %d", emmc_dev);
 				run_command(run_cmd, 0);
 			}
 			else
@@ -738,9 +720,12 @@ static int write_to_ptn_sdmmc(struct fastboot_ptentry *ptn, unsigned int addr,
 
 		ret = do_movi(NULL, 0, argc, argv);
 
-		if (OmPin == 7 && (!strcmp(ptn->name, "fwbl1") || !strcmp(ptn->name, "bootloader") ||
-					 !strcmp(ptn->name, "bl2") || !strcmp(ptn->name, "tzsw"))){
-			sprintf(run_cmd,"emmc close 0");
+		if ((OmPin == 7 || force_emmc) &&
+			(!strcmp(ptn->name, "fwbl1") ||
+			 !strcmp(ptn->name, "bootloader") ||
+			 !strcmp(ptn->name, "bl2") ||
+			 !strcmp(ptn->name, "tzsw"))) {
+			sprintf(run_cmd, "emmc close %d", emmc_dev);
 			run_command(run_cmd, 0);
 		}
 
@@ -1983,6 +1968,7 @@ int do_fastboot(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	struct fastboot_ptentry *ptn;
 	unsigned int addr, size;
 	gflag_reboot = 0;
+	force_emmc = 1;
 
 	if (set_partition_table_from_bootmode())
 		return -1;
@@ -2102,6 +2088,7 @@ int do_fastboot(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		/* restart the loop if a disconnect was detected */
 	} while (continue_from_disconnect);
 
+	force_emmc = 0;
 	return ret;
 }
 
@@ -2122,7 +2109,7 @@ U_BOOT_CMD(
  */
 #include <fs.h>
 extern struct ext2fs_node *ext4fs_file;
-static int update_from_sd (char *part, char *file)
+static int update_from_sd(int part_num, const char *part, const char *file)
 {
 	int ret = 1;
 	long size;
@@ -2141,7 +2128,7 @@ static int update_from_sd (char *part, char *file)
 		return -1;
 	}
 
-	ret = get_partition_info(dev_desc, 1, &part_info);
+	ret = get_partition_info(dev_desc, part_num, &part_info);
 	if (ret) {
 		printf("Invalid partition\n");
 		return -1;
@@ -2220,6 +2207,9 @@ int do_sdfuse (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int ret = 1;
 	int enable_reset = 0;
 	struct mmc *mmc;
+	int part_num = 2;
+	char run_cmd[64];
+	force_emmc = 1;
 
 	interface.transfer_buffer =
 		(unsigned char *)CFG_FASTBOOT_TRANSFER_BUFFER;
@@ -2230,24 +2220,38 @@ int do_sdfuse (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (set_partition_table_from_bootmode())
 		return -1;
 
-	if ((argc == 2) && !strcmp(argv[1], "format"))
+	if ((argc == 2) && !strcmp(argv[1], "format")) {
 		ret = process_cmd_format();
-	else if ((argc == 2) && !strcmp(argv[1], "flashall")) {
-		update_from_sd("fwbl1", "bl1.bin");
-		update_from_sd("bl2", "bl2.bin");
-		update_from_sd("tzsw", "tzsw.bin");
-		update_from_sd("bootloader", "u-boot.bin");
-		update_from_sd("env", "params.bin");
-		if (update_from_sd("boot", "boot.img")) {
-			update_from_sd("kernel", getenv("kernel_file"));
-			update_from_sd("ramdisk", getenv("initrd_file"));
-			update_from_sd("dtb", getenv("fdtfile"));
+		sprintf(run_cmd, "mmc dev %d", emmc_dev);
+		run_command(run_cmd, 0);
+		sprintf(run_cmd, "mmc rescan");
+		run_command(run_cmd, 0);
+		if (emmc_dev) {
+			sprintf(run_cmd, "mmc dev 0");
+			run_command(run_cmd, 0);
 		}
-		update_from_sd("rootfs", "rootfs.img");
-		update_from_sd("data", "data.img");
+	} else if ((argc == 3) && !strcmp(argv[1], "flashall")) {
+		part_num = simple_strtoul(argv[2], NULL, 16);
+		update_from_sd(part_num, "fwbl1", "bl1.bin");
+		update_from_sd(part_num, "bl2", "bl2.bin");
+		update_from_sd(part_num, "tzsw", "tzsw.bin");
+		update_from_sd(part_num, "bootloader", "u-boot.bin");
+		update_from_sd(part_num, "env", "params.bin");
+
+		if (update_from_sd(part_num, "boot", "boot.img")) {
+			update_from_sd(part_num, "kernel",
+					getenv("kernel_file"));
+			update_from_sd(part_num, "ramdisk",
+					getenv("initrd_file"));
+			update_from_sd(part_num, "dtb",
+					getenv("fdtfile"));
+		}
+		update_from_sd(part_num, "rootfs", "rootfs.img");
+		update_from_sd(part_num, "data", "data.img");
+
 		ret = 0;
-	} else if ((argc == 4) && !strcmp(argv[1], "flash")) {
-		if (update_from_sd(argv[2], argv[3]))
+	} else if ((argc == 5) && !strcmp(argv[1], "flash")) {
+		if (update_from_sd(part_num, argv[3], argv[4]))
 			return -1;
 
 		ret = 0;
@@ -2256,15 +2260,17 @@ int do_sdfuse (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 
+	force_emmc = 0;
+
 	return ret;
 }
 
 U_BOOT_CMD(
-	sdfuse,		4,	1,	do_sdfuse,
-	"sdfuse  - read images from FAT partition of SD card and write them to booting device.\n",
-	"sdfuse flashall                         - flash all images\n"
+	sdfuse,		5,	1,	do_sdfuse,
+	"sdfuse  - read images from EXT4 partition of SD card and write them to booting device.\n",
+	"sdfuse part_no flashall                 - flash all images\n"
 	"sdfuse format				 - format mmc partition\n"
-	"sdfuse flash <partition> [ <filename> ] - write a file to a partition.\n"
+	"sdfuse flash part_no <partition> [ <filename> ] - write a file to a partition.\n"
 );
 #endif	/* CONFIG_FASTBOOT_SDFUSE */
 
