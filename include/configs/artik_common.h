@@ -142,6 +142,8 @@
 #define CONFIG_FASTBOOT_CHUNK_SIZE		64
 #endif
 
+#define CONFIG_FASTBOOT_SDFUSE
+
 #define CONFIG_FASTBOOT_AUTO_REBOOT
 #define CONFIG_FASTBOOT_AUTO_REBOOT_MODE	0x3
 
@@ -259,6 +261,7 @@
 	"fdtaddr=40800000\0"						\
 	"initrd_file=uInitrd\0"						\
 	"initrd_addr=43000000\0"					\
+	"sdrecovery=sdfuse format; sdfuse flashall 2\0"			\
 	"boot_cmd=fatload mmc 0:1 $kernel_addr $kernel_file;"		\
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
 		"bootz $kernel_addr $initrd_addr $fdtaddr\0"		\
@@ -266,12 +269,13 @@
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
 		"fatload mmc 0:1 $initrd_addr $initrd_file;"		\
 		"bootz $kernel_addr $initrd_addr $fdtaddr\0"		\
-	"ramfsboot=setenv bootargs ${console} root=/dev/ram0 "		\
-		"rootfstype=ext2 ${opts};"				\
+	"ramfsboot=run sdrecovery;"					\
+		"setenv bootargs ${console} root=/dev/ram0 "		\
+		"rootfstype=ext2 ${opts} recovery;"			\
 		"run boot_cmd_initrd\0"					\
 	"mmcboot=setenv bootargs ${console} "				\
 		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
-		"${opts};run boot_cmd\0"				\
+		"rootfstype=ext4 ${opts};run boot_cmd\0"		\
 	"bootcmd=run mmcboot\0"
 
 #endif /* __ARTIK_COMMON_H */
