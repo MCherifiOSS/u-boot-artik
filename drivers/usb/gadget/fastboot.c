@@ -452,6 +452,9 @@ int fastboot_poll(void)
    Returns 1 on failure */
 int fastboot_tx_status(const char *buffer, unsigned int buffer_size, const u32 need_sync_flag)
 {
+	if (!is_fastboot)
+		return 0;
+
 	/* fastboot client only reads back at most 64 */
 	transfer_size = MIN(64, buffer_size);
 
