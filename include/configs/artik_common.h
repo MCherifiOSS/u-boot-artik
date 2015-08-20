@@ -241,6 +241,14 @@
 		"MiB,uuid=${uuid_gpt_boot};"				\
 	"name=rootfs,size=-,uuid=${uuid_gpt_rootfs}\0"
 
+#define PARTS_ANDROID							\
+	"uuid_disk=${uuid_gpt_disk};"					\
+	"name=boot,start=1MiB,size=" __stringify(CONFIG_BOOT_PART_SIZE) \
+		"MiB,uuid=${uuid_gpt_boot};"				\
+	"name=system,size=1024MiB,uuid=${uuid_gpt_system};"		\
+	"name=cache,size=128MiB,uuid=${uuid_gpt_cache};"		\
+	"name=userdata,size=-,uuid=${uuid_gpt_userdata}\0"
+
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"console=" CONFIG_DEFAULT_CONSOLE				\
 	"consoleon=set console=" CONFIG_DEFAULT_CONSOLE			\
@@ -248,6 +256,7 @@
 	"consoleoff=set console=ram; saveenv; reset\0"			\
 	"rootfslen=" __stringify(CONFIG_ROOTFS_LEN) "\0"		\
 	"partitions=" PARTS_DEFAULT					\
+	"partitions_android=" PARTS_ANDROID				\
 	"rootdev=" __stringify(CONFIG_ROOT_DEV) "\0"			\
 	"rootpart=" __stringify(CONFIG_ROOT_PART) "\0"			\
 	"bootpart=" __stringify(CONFIG_BOOT_PART) "\0"			\
@@ -267,6 +276,13 @@
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
 		"fatload mmc 0:1 $initrd_addr $initrd_file;"		\
 		"bootz $kernel_addr $initrd_addr $fdtaddr\0"		\
+	"android_boot="							\
+		"setenv bootargs ${console} root=/dev/ram0 "		\
+		"${opts};"						\
+		"run boot_cmd_initrd\0"					\
+	"android_format=gpt write mmc 0 $partitions_android;"		\
+		"setenv bootcmd run android_boot;"			\
+		"saveenv; mmc rescan; fastboot\0"			\
 	"ramfsboot=run sdrecovery;"					\
 		"setenv bootargs ${console} root=/dev/ram0 "		\
 		"rootfstype=ext2 ${opts} recovery;"			\
