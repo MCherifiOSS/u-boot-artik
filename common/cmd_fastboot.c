@@ -1774,8 +1774,10 @@ static int get_mmc_partition_tables()
 			break;
 
 		strcpy(ptable[pcount].name, info.name);
-		ptable[pcount].start = info.start * info.blksz;
-		ptable[pcount].length = info.size * info.blksz;
+		ptable[pcount].start = (unsigned long long)info.start *
+							   info.blksz;
+		ptable[pcount].length = (unsigned long long)info.size *
+							   info.blksz;
 		ptable[pcount].flags = FASTBOOT_PTENTRY_FLAGS_USE_MMC_CMD;
 #ifdef CONFIG_FASTBOOT_FLASH_CHUNK
 		ptable[pcount].flags |= FASTBOOT_PTENTRY_FLAGS_FLASH_CHUNK;
