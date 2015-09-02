@@ -2113,7 +2113,7 @@ U_BOOT_CMD(
 extern struct ext2fs_node *ext4fs_file;
 static int update_from_sd(int part_num, const char *part, const char *file)
 {
-	int ret = 1;
+	int ret = 1, is_fat = 0;
 	long size;
 	unsigned long addr;
 	unsigned long offset = 0;
@@ -2138,8 +2138,12 @@ static int update_from_sd(int part_num, const char *part, const char *file)
 
 	ret = ext4fs_probe(dev_desc, &part_info);
 	if (ret) {
-		printf("Cannot probe ext4 partition\n");
-		return -1;
+		/* Fall back to fat file system */
+		if (fat_set_blk_dev(dev_desc, &part_info) != 0) {
+			printf("Cannot probe ext4 or fat partition\n");
+			return -1;
+		}
+		is_fat = 1;
 	}
 
 	reset_handler();
@@ -2147,7 +2151,11 @@ static int update_from_sd(int part_num, const char *part, const char *file)
 
 	addr = CFG_FASTBOOT_TRANSFER_BUFFER;
 
-	file_len = ext4fs_open(file);
+	if (is_fat)
+		file_len = fat_size(file);
+	else
+		file_len = ext4fs_open(file);
+
 	if (file_len < 0) {
 		printf("File not found %s\n", file);
 		return -1;
@@ -2165,7 +2173,11 @@ static int update_from_sd(int part_num, const char *part, const char *file)
 		if (count > CHUNK_SIZE)
 			count = CHUNK_SIZE;
 
-		size = ext4fs_read_file(ext4fs_file, offset, count, addr);
+		if (is_fat)
+			size = file_fat_read_at(file, offset, addr, count);
+		else
+			size = ext4fs_read_file(ext4fs_file, offset, count,
+						addr);
 		if (size == -1) {
 			printf("Failed to read %s\n", file);
 			ret = -1;
@@ -2191,7 +2203,8 @@ static int update_from_sd(int part_num, const char *part, const char *file)
 	}
 
 err_out:
-	ext4fs_close();
+	if (!is_fat)
+		ext4fs_close();
 	reset_handler();
 	return ret;
 }
