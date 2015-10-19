@@ -283,13 +283,15 @@
 	"android_format=gpt write mmc 0 $partitions_android;"		\
 		"setenv bootcmd run android_boot;"			\
 		"saveenv; mmc rescan; fastboot\0"			\
-	"ramfsboot=run sdrecovery;"					\
-		"setenv bootargs ${console} root=/dev/ram0 "		\
-		"rootfstype=ext2 ${opts} recovery;"			\
+	"recoveryboot=run sdrecovery; setenv recoverymode recovery;"	\
+		"run ramfsboot\0"					\
+	"ramfsboot=setenv bootargs ${console} "				\
+		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
+		"rootfstype=ext4 ${opts} ${recoverymode};"		\
 		"run boot_cmd_initrd\0"					\
 	"mmcboot=setenv bootargs ${console} "				\
 		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
 		"rootfstype=ext4 ${opts};run boot_cmd\0"		\
-	"bootcmd=run mmcboot\0"
+	"bootcmd=run ramfsboot\0"
 
 #endif /* __ARTIK_COMMON_H */
