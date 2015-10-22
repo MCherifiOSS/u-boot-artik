@@ -2261,6 +2261,8 @@ int do_sdfuse (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			update_from_sd(part_num, "dtb",
 					getenv("fdtfile"));
 		}
+
+		update_from_sd(part_num, "modules", "modules.img");
 		update_from_sd(part_num, "rootfs", "rootfs.img");
 		update_from_sd(part_num, "data", "data.img");
 
