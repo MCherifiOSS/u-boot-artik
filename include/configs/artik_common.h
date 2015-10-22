@@ -228,17 +228,21 @@
 #define CONFIG_ROOTFS_ATAGS
 #define CONFIG_ROOTFS_LEN		100000
 
-#define CONFIG_BOOT_PART_SIZE		64
+#define CONFIG_BOOT_PART_SIZE		32
+#define CONFIG_MODULE_PART_SIZE		32
 #define CONFIG_ROOTFS_PART_SIZE		3072
 
 #define CONFIG_ROOT_DEV		0
 #define CONFIG_BOOT_PART	1
-#define CONFIG_ROOT_PART	2
+#define CONFIG_MODULE_PART	2
+#define CONFIG_ROOT_PART	3
 
 #define PARTS_DEFAULT							\
 	"uuid_disk=${uuid_gpt_disk};"					\
 	"name=boot,start=1MiB,size=" __stringify(CONFIG_BOOT_PART_SIZE) \
 		"MiB,uuid=${uuid_gpt_boot};"				\
+	"name=modules,size=" __stringify(CONFIG_MODULE_PART_SIZE)	\
+		"MiB,uuid=${uuid_gpt_module};"				\
 	"name=rootfs,size=-,uuid=${uuid_gpt_rootfs}\0"
 
 #define PARTS_ANDROID							\
@@ -268,7 +272,7 @@
 	"fdtaddr=40800000\0"						\
 	"initrd_file=uInitrd\0"						\
 	"initrd_addr=43000000\0"					\
-	"sdrecovery=sdfuse format; sdfuse flashall 2\0"			\
+	"sdrecovery=sdfuse format; sdfuse flashall 3\0"			\
 	"boot_cmd=fatload mmc 0:1 $kernel_addr $kernel_file;"		\
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
 		"bootz $kernel_addr - $fdtaddr\0"			\
