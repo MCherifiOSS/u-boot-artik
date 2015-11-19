@@ -245,6 +245,16 @@
 		"MiB,uuid=${uuid_gpt_module};"				\
 	"name=rootfs,size=-,uuid=${uuid_gpt_rootfs}\0"
 
+#define PARTS_TIZEN							\
+	"uuid_disk=${uuid_gpt_disk};"					\
+	"name=boot,start=1MiB,size=" __stringify(CONFIG_BOOT_PART_SIZE) \
+		"MiB,uuid=${uuid_gpt_boot};"				\
+	"name=modules,size=" __stringify(CONFIG_MODULE_PART_SIZE)	\
+		"MiB,uuid=${uuid_gpt_module};"				\
+	"name=rootfs,size=2048MiB,uuid=${uuid_gpt_rootfs};"		\
+	"name=system-data,size=256MiB,uuid=${uuid_gpt_system_data};"	\
+	"name=user,size=-,uuid=${uuid_gpt_user}\0"
+
 #define PARTS_ANDROID							\
 	"uuid_disk=${uuid_gpt_disk};"					\
 	"name=boot,start=1MiB,size=" __stringify(CONFIG_BOOT_PART_SIZE) \
@@ -261,6 +271,7 @@
 	"rootfslen=" __stringify(CONFIG_ROOTFS_LEN) "\0"		\
 	"partitions=" PARTS_DEFAULT					\
 	"partitions_android=" PARTS_ANDROID				\
+	"partitions_tizen=" PARTS_TIZEN					\
 	"rootdev=" __stringify(CONFIG_ROOT_DEV) "\0"			\
 	"rootpart=" __stringify(CONFIG_ROOT_PART) "\0"			\
 	"bootpart=" __stringify(CONFIG_BOOT_PART) "\0"			\
@@ -287,6 +298,8 @@
 	"android_format=gpt write mmc 0 $partitions_android;"		\
 		"setenv bootcmd run android_boot;"			\
 		"saveenv; mmc rescan; fastboot\0"			\
+	"tizen_format=gpt write mmc 0 $partitions_tizen;"		\
+		"mmc rescan; fastboot\0"				\
 	"recoveryboot=run sdrecovery; setenv recoverymode recovery;"	\
 		"run ramfsboot\0"					\
 	"ramfsboot=setenv bootargs ${console} "				\
