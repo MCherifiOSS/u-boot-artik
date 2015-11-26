@@ -80,53 +80,8 @@ int init_raw_area_table(block_dev_desc_t * dev_desc, int location)
 	image[part_num].attribute = 0x4;
 	strcpy(image[part_num].description, "environment");
 	dbg("env: %d\n", image[part_num].start_blk);
-
-
-	/* For eMMC partition BLOCK Change*/
-	if (location == 0)
-		image[part_num].start_blk = image[part_num].start_blk + 1;
 	part_num++;
 
-	/* image 5 should be kernel */
-#ifdef CONFIG_KERNEL_OFFSET
-	image[part_num].start_blk = CONFIG_KERNEL_OFFSET * 2048;
-#else
-	image[part_num].start_blk = image[part_num - 1].start_blk + MOVI_ENV_BLKCNT;
-#endif
-	image[part_num].used_blk = MOVI_ZIMAGE_BLKCNT;
-	image[part_num].size = PART_SIZE_KERNEL;
-	image[part_num].attribute = 0x5;
-	strcpy(image[part_num].description, "kernel");
-	dbg("knl: %d\n", image[part_num].start_blk);
-	part_num++;
-
-	/* image 6 should be RFS */
-	image[part_num].start_blk = image[part_num - 1].start_blk + MOVI_ZIMAGE_BLKCNT;
-	image[part_num].used_blk = MOVI_ROOTFS_BLKCNT;
-	image[part_num].size = PART_SIZE_ROOTFS;
-	image[part_num].attribute = 0x6;
-	strcpy(image[part_num].description, "rfs");
-	dbg("rfs: %d\n", image[part_num].start_blk);
-	part_num++;
-
-#ifdef CONFIG_CHARGER_LOGO
-	image[part_num].start_blk = image[part_num - 1].start_blk + MOVI_ROOTFS_BLKCNT;
-	image[part_num].used_blk = MOVI_CHARGER_LOGO_BLKCNT;
-	image[part_num].size = PART_SIZE_CHARGER_LOGO;
-	image[part_num].attribute = 0x7;
-	strcpy(image[part_num].description, "charger");
-	dbg("charger: %d\n", image[part_num].start_blk);
-	part_num++;
-#endif
-#ifdef CONFIG_BOOT_LOGO
-	image[part_num].start_blk = image[part_num - 1].start_blk + MOVI_CHARGER_LOGO_BLKCNT;
-	image[part_num].used_blk = MOVI_BOOT_LOGO_BLKCNT;
-	image[part_num].size = PART_SIZE_BOOT_LOGO;
-	image[part_num].attribute = 0x8;
-	strcpy(image[part_num].description, "bootlogo");
-	dbg("bootlogo: %d\n", image[part_num].start_blk);
-	part_num++;
-#endif
 	for (i = part_num; i < 15; i++) {
 		raw_area_control.image[i].start_blk = 0;
 		raw_area_control.image[i].used_blk = 0;

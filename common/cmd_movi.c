@@ -93,30 +93,6 @@ int do_movi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			goto usage;
 		attribute = 0x4;
 		break;
-	case 'k':
-		if (argc != 5)
-			goto usage;
-		attribute = 0x5;
-		break;
-	case 'r':
-		if (argc != 6)
-			goto usage;
-		attribute = 0x6;
-		break;
-#ifdef CONFIG_CHARGER_LOGO
-	case 'c':
-		if (argc != (6 - location))
-			goto usage;
-		attribute = 0x7;
-		break;
-#endif
-#ifdef CONFIG_BOOT_LOGO
-	case 'l':
-		if (argc != (6 - location))
-			goto usage;
-		attribute = 0x8;
-		break;
-#endif
 	default:
 		goto usage;
 	}
@@ -217,82 +193,6 @@ int do_movi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 
-	/* kernel r/w */
-	if (attribute == 0x5) {
-		for (i=0, image = raw_area_control.image; i<15; i++) {
-			if (image[i].attribute == attribute)
-				break;
-		}
-		start_blk = image[i].start_blk;
-		blkcnt = image[i].used_blk;
-		printf("%s kernel..device %d Start %ld, Count %ld ", rw ? "writing" : "reading",
-			dev_num, start_blk, blkcnt);
-		sprintf(run_cmd, "mmc %s %d 0x%lx 0x%lx 0x%lx",
-			rw ? "write" : "read", dev_num,
-			addr, start_blk, blkcnt);
-		run_command(run_cmd, dev_num);
-		printf("completed\n");
-		return 1;
-	}
-
-	/* root file system r/w */
-	if (attribute == 0x6) {
-		rfs_size = simple_strtoul(argv[5], NULL, 16);
-
-		for (i=0, image = raw_area_control.image; i<15; i++) {
-			if (image[i].attribute == attribute)
-				break;
-		}
-		start_blk = image[i].start_blk;
-		blkcnt = rfs_size/MOVI_BLKSIZE +
-			((rfs_size&(MOVI_BLKSIZE-1)) ? 1 : 0);
-		image[i].used_blk = blkcnt;
-		printf("%s RFS..device %d Start %ld, Count %ld ", rw ? "writing":"reading",
-			dev_num, start_blk, blkcnt);
-		sprintf(run_cmd,"mmc %s %d 0x%lx 0x%lx 0x%lx",
-			rw ? "write":"read", dev_num,
-			addr, start_blk, blkcnt);
-		run_command(run_cmd, dev_num);
-		printf("completed\n");
-		return 1;
-	}
-
-#ifdef CONFIG_CHARGER_LOGO
-	if (attribute == 0x7) {
-		for (i=0, image = raw_area_control.image; i<15; i++) {
-			if (image[i].attribute == attribute)
-				break;
-		}
-		start_blk = image[i].start_blk;
-		blkcnt = image[i].used_blk;
-		printf("%s charger logo..device %d Start %ld, Count %ld ", rw ? "writing" : "reading",
-			dev_num, start_blk, blkcnt);
-		sprintf(run_cmd, "mmc %s %d 0x%lx 0x%lx 0x%lx",
-			rw ? "write" : "read", dev_num,
-			addr, start_blk, blkcnt);
-		run_command(run_cmd, dev_num);
-		printf("completed\n");
-		return 1;
-	}
-#endif
-#ifdef CONFIG_BOOT_LOGO
-	if (attribute == 0x8) {
-		for (i=0, image = raw_area_control.image; i<15; i++) {
-			if (image[i].attribute == attribute)
-				break;
-		}
-		start_blk = image[i].start_blk;
-		blkcnt = image[i].used_blk;
-		printf("%s bootlogo..  %d Start %ld, Count %ld ", rw ? "writing" : "reading",
-			dev_num, start_blk, blkcnt);
-		sprintf(run_cmd, "mmc %s %d 0x%lx 0x%lx 0x%lx",
-			rw ? "write" : "read", dev_num,
-			addr, start_blk, blkcnt);
-		run_command(run_cmd, dev_num);
-		printf("completed\n");
-		return 1;
-	}
-#endif
 	return 1;
 
 usage:
@@ -311,10 +211,6 @@ U_BOOT_CMD(
 	"movi read {fwbl1 | bl2 | u-boot | tzsw} {device_number} {addr} - Read data from sd/mmc\n"
 	"movi write {fwbl1 | bl2 | u-boot | tzsw} {device_number} {addr} - Read data from sd/mmc\n"
 	"#COMMON#\n"
-	"movi read kernel {device_number} {addr} - Read data from device\n"
-	"movi write kernel {device_number} {addr} - Write data to device\n"
-	"movi read rootfs {device_number} {addr} [bytes(hex)] - Read rootfs data from device by size\n"
-	"movi write rootfs {device_number} {addr} [bytes(hex)] - Write rootfs data to device by size\n"
 	"movi read {sector#} {device_number} {bytes(hex)} {addr} - instead of this, you can use \"mmc read\"\n"
 	"movi write {sector#} {device_number} {bytes(hex)} {addr} - instead of this, you can use \"mmc write\"\n"
 );
