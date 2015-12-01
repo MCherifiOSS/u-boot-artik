@@ -125,6 +125,10 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_LATE_INIT
 
+/* FACTORY_INFO */
+#define CONFIG_FACTORY_INFO
+#define CONFIG_FACTORY_INFO_BUF_ADDR		(0x48000000)
+
 /* FASTBOOT */
 #define CONFIG_FASTBOOT
 #define CFG_FASTBOOT_SDMMCBSP
@@ -272,6 +276,7 @@
 	"partitions=" PARTS_DEFAULT					\
 	"partitions_android=" PARTS_ANDROID				\
 	"partitions_tizen=" PARTS_TIZEN					\
+	"emmc_dev=0\0"							\
 	"rootdev=" __stringify(CONFIG_ROOT_DEV) "\0"			\
 	"rootpart=" __stringify(CONFIG_ROOT_PART) "\0"			\
 	"bootpart=" __stringify(CONFIG_BOOT_PART) "\0"			\
@@ -284,6 +289,8 @@
 	"initrd_file=uInitrd\0"						\
 	"initrd_addr=43000000\0"					\
 	"sdrecovery=sdfuse format; sdfuse flashall 3\0"			\
+	"factory_load=factory_info load mmc ${emmc_dev} 0x80 0x8\0"	\
+	"factory_save=factory_info save mmc ${emmc_dev} 0x80 0x8\0"	\
 	"boot_cmd=fatload mmc 0:1 $kernel_addr $kernel_file;"		\
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
 		"bootz $kernel_addr - $fdtaddr\0"			\
@@ -302,9 +309,10 @@
 		"mmc rescan; fastboot\0"				\
 	"recoveryboot=run sdrecovery; setenv recoverymode recovery;"	\
 		"run ramfsboot\0"					\
-	"ramfsboot=setenv bootargs ${console} "				\
+	"ramfsboot=run factory_load; setenv bootargs ${console} "	\
 		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
-		"rootfstype=ext4 ${opts} ${recoverymode};"		\
+		"rootfstype=ext4 ${opts} ${recoverymode} "		\
+		"asix.macaddr=${ethaddr} bd_addr=${bd_addr};"		\
 		"run boot_cmd_initrd\0"					\
 	"mmcboot=setenv bootargs ${console} "				\
 		"root=/dev/mmcblk${rootdev}p${rootpart} ${root_rw} "	\
