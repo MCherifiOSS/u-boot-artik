@@ -323,9 +323,6 @@ int board_mmc_init(bd_t *bis)
 	}
 
 	switch (OmPin) {
-	case BOOT_MMCSD:
-		setenv("emmc_dev", "1");
-		break;
 	case BOOT_EMMC_4_4:
 #if defined(USE_MMC0)
 		set_mmc_clk(PERIPH_ID_SDMMC0, 1);

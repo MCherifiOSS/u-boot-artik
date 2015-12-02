@@ -204,9 +204,6 @@ int board_mmc_init(bd_t *bis)
 		return err;
 	}
 
-	if (OmPin == BOOT_MMCSD)
-		setenv("emmc_dev", "1");
-
 	if (OmPin == BOOT_EMMC_4_4 || OmPin == BOOT_EMMC) {
 #ifdef USE_MMC0
 		set_mmc_clk(PERIPH_ID_SDMMC0, 0);
