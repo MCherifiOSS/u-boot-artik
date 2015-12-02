@@ -471,6 +471,12 @@ int board_late_init(void)
 		run_command("fastboot", 0);
 	}
 #endif
+
+#ifdef CONFIG_FACTORY_INFO
+	if (readl(&pmu->inform3) == BOOT_MMCSD)
+		setenv("emmc_dev", "1");
+#endif
+
 	return 0;
 }
 
