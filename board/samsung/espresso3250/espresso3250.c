@@ -95,6 +95,10 @@ int board_init(void)
 #endif
 #endif
 
+#ifdef CONFIG_EXYNOS_SPI
+	spi_init();
+#endif
+
 	//gd->bd->bi_arch_number = MACH_TYPE_SMDK3250;
 
 	gd->bd->bi_boot_params = (PHYS_SDRAM_1+0x100);
