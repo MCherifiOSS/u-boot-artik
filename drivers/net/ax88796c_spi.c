@@ -217,7 +217,7 @@ static int ax88796c_mdio_read(struct eth_device *dev, int phy_id, int loc)
 	write_reg(dev, P2_MDIOCR, MDIOCR_RADDR(loc) |
 		MDIOCR_FADDR(phy_id) | MDIOCR_READ);
 
-	time_out = get_timer(0) + (CFG_HZ / 100);
+	time_out = get_timer(0) + (CFG_HZ * 100);
 	while ((read_reg(dev, P2_MDIOCR) & MDIOCR_VALID) == 0){
 		if (get_timer(0) > time_out) {
 			return -EIO;
@@ -244,7 +244,7 @@ static int ax88796c_mdio_write(struct eth_device *dev, int phy_id, int loc,
 	write_reg(dev, P2_MDIOCR, MDIOCR_RADDR(loc) |
 		MDIOCR_FADDR(phy_id) | MDIOCR_WRITE);
 
-	time_out = get_timer(0) + (CFG_HZ / 100);
+	time_out = get_timer(0) + (CFG_HZ * 100);
 	while ((read_reg(dev, P2_MDIOCR) & MDIOCR_VALID) == 0){
 		if (get_timer(0) > time_out) {
 			return -EIO;
@@ -312,7 +312,7 @@ static int ax88796c_reset(struct eth_device *dev)
 	write_reg(dev, P0_PSR, PSR_RESET);
 	write_reg(dev, P0_PSR, PSR_RESET_CLR);
 
-	time_out = get_timer(0) + (CFG_HZ / 100);
+	time_out = get_timer(0) + (CFG_HZ * 100);
 	while (!(read_reg(dev, P0_PSR) & PSR_DEV_READY)){
 		if (get_timer(0) > time_out) {
 			return -ENXIO;
@@ -451,7 +451,7 @@ static unsigned char ax88796c_nic_to_pc(struct eth_device *dev)
 	burst_len = ((rxlen + sizeof(struct rx_header) + 3) & 0xFFFC) >> 1;
 	write_reg(dev, P0_RXBCR1, (burst_len | RXBCR1_RXB_START));
 
-	time_out = get_timer(0) + (CFG_HZ / 100);
+	time_out = get_timer(0) + (CFG_HZ * 100);
 	while ((read_reg(dev, P0_RXBCR2) & RXBCR2_RXB_READY) == 0) {
 		if (get_timer(0) > time_out) {
 			write_reg(dev, P0_RXBCR1, RXBCR1_RXB_DISCARD);
@@ -462,7 +462,7 @@ static unsigned char ax88796c_nic_to_pc(struct eth_device *dev)
 	/* Receive RX Header, data and padding */
 	ax88796c_read_fifo_pio(dev, (unsigned char*)&rx_packet[0], burst_len * 2);
 
-	time_out = get_timer(0) + (CFG_HZ / 100);
+	time_out = get_timer(0) + (CFG_HZ * 100);
 	while ((read_reg(dev, P0_RXBCR2) & RXBCR2_RXB_IDLE) == 0) {
 		if (get_timer(0) > time_out) {
 			goto error_out;
@@ -581,7 +581,7 @@ static int ax88796c_send(struct eth_device *dev, volatile void *packet,
 	ax88796c_write_fifo_pio(dev, (unsigned char*)&tx_packet,
 		TX_HDR_SIZE + length + EOP_SIZE + align_count);
 
-	time_out = get_timer(0) + (CFG_HZ / 100);
+	time_out = get_timer(0) + (CFG_HZ * 100);
 	while ((read_reg(dev, P0_TSNR) & TSNR_TXB_IDLE) == 0){
 		if (get_timer(0) > time_out) {
 			goto error_out;
