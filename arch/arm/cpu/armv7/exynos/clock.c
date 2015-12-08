@@ -1441,6 +1441,73 @@ void exynos4_set_mipi_clk(void)
 	writel(cfg, &clk->div_lcd0);
 }
 
+/* get_spi_clk: return spi clock frequency */
+static unsigned long exynos4_get_spi_clk(int id)
+{
+	struct exynos4_clock *clk =
+		(struct exynos4_clock *)samsung_get_base_clock();
+	unsigned long spiclk, dclk, sclk;
+	unsigned int sel;
+	unsigned int ratio;
+	unsigned int prescaler;
+
+	/*
+	 * CLK_SRC_PERIL1
+	 * SPI1_SEL [23:20]
+	 * SPI0_SEL [19:16]
+	 */
+	sel = readl(&clk->src_peril1);
+	if (id)
+		sel = (sel >> 20) & 0xf; /* SPI1_SEL */
+	else
+		sel = (sel >> 16) & 0xf; /* SPI0_SEL */
+
+	/*
+	 * 0x6: SCLK_MPLL * 3250 : SCLK_MPLL_PRE_DIV (MPLL/2)
+	 * 0x7: SCLK_EPLL
+	 * 0x8: SCLK_VPLL
+	 */
+	if (sel == 0x6) {
+#ifdef CONFIG_CPU_EXYNOS3250
+		sclk = get_pll_clk(MPLL) / 8;
+#else
+		sclk = get_pll_clk(MPLL);
+#endif
+	} else if (sel == 0x7)
+		sclk = get_pll_clk(EPLL);
+	else if (sel == 0x8)
+		sclk = get_pll_clk(VPLL);
+	else
+		return 0;
+
+	debug("%s : sclk %ld\n", __func__, sclk);
+
+	/*
+	 * CLK_DIV_PERIL1
+	 * SPI1_PRE_RATIO	[31:24]
+	 * SPI1_RATIO		[19:16]
+	 * SPI0_PRE_RATIO	[15:8]
+	 * SPI0_RATIO		[3:0]
+	 */
+	if (id) {
+		ratio = readl(&clk->div_peril1);
+		prescaler = (ratio >> 24) & 0xff;
+		ratio = (ratio >> 16) & 0xf;
+
+		dclk = sclk / (ratio + 1);
+		spiclk = dclk / (prescaler + 1);
+	} else {
+		ratio = readl(&clk->div_peril1);
+		prescaler = (ratio >> 8) & 0xff;
+		ratio = ratio & 0xf;
+
+		dclk = sclk / (ratio + 1);
+		spiclk = dclk / (prescaler + 1);
+	}
+
+	return spiclk;
+}
+
 /**
  * Linearly searches for the most accurate main and fine stage clock scalars
  * (divisors) for a specified target frequency and scalar bit sizes by checking
@@ -1498,6 +1565,98 @@ static int clock_calc_best_scalar(unsigned int main_scaler_bits,
 	}
 
 	return best_main_scalar;
+}
+
+static int exynos4_set_spi_clk(enum periph_id periph_id,
+					unsigned int rate)
+{
+	struct exynos4_clock *clk =
+		(struct exynos4_clock *)samsung_get_base_clock();
+	int main;
+	unsigned int fine;
+	unsigned shift, pre_shift;
+	unsigned mask = 0xff;
+	unsigned pre_mask = 0xf;
+	u32 *reg;
+	unsigned int source_clk = 0;
+	unsigned int cfg = 0;
+	static unsigned int spi_clock[2] = { 0, 0 };
+	int id;
+
+	switch (periph_id) {
+	case PERIPH_ID_SPI0:
+		id = 0;
+		break;
+	case PERIPH_ID_SPI1:
+		id = 1;
+		break;
+	default:
+		debug("%s: Unsupported peripheral ID %d\n", __func__,
+		      periph_id);
+		return -1;
+	}
+
+	/* check for spi clock update */
+	if (spi_clock[id] == rate) {
+		debug("%s : spi clock is setup as %d.\n", __func__, rate);
+		return 0;
+	} else {
+		spi_clock[id] = rate;
+	}
+
+	debug("%s : rate %d\n", __func__, rate);
+
+	/*
+	 * CLK_SRC_PERIL1
+	 * SPI1_SEL [23:20]
+	 * SPI0_SEL [19:16]
+	 */
+	cfg = readl(&clk->src_peril1);
+	if (id) {
+		cfg &= ~(0xf << 20);
+		cfg |= (0x6 << 20);
+	} else {
+		cfg &= ~(0xf << 16);
+		cfg |= (0x6 << 16);
+	}
+	writel(cfg, &clk->src_peril1);
+	reg = &clk->src_peril1;
+
+	source_clk = exynos4_get_spi_clk(id);
+
+	debug("%s: id %d source_clk %d\n", __func__, id, source_clk);
+
+	main = clock_calc_best_scalar(4, 8, source_clk, rate, &fine);
+	if (main < 0) {
+		debug("%s: Cannot set clock rate for periph %d",
+		      __func__, periph_id);
+		return -1;
+	}
+	main = main - 1;
+	fine = fine - 1;
+
+	switch (id) {
+	case 0:
+		reg = &clk->div_peril1;
+		shift = 0;
+		pre_shift = 8;
+		break;
+	case 1:
+		reg = &clk->div_peril1;
+		shift = 16;
+		pre_shift = 24;
+		break;
+	default:
+		debug("%s: Unsupported peripheral ID %d\n", __func__,
+		      periph_id);
+		return -1;
+	}
+
+	clrsetbits_le32(reg, mask << shift, (main & mask) << shift);
+	clrsetbits_le32(reg, pre_mask << pre_shift,
+			(fine & pre_mask) << pre_shift);
+
+	return 0;
 }
 
 static int exynos5_set_spi_clk(enum periph_id periph_id,
@@ -1661,6 +1820,14 @@ unsigned long get_lcd_clk(void)
 		return 0;
 }
 
+unsigned long get_spi_clk(int id)
+{
+	if (cpu_is_exynos4())
+		return exynos4_get_spi_clk(id);
+	else
+		return 0;
+}
+
 void set_lcd_clk(void)
 {
 	if (cpu_is_exynos4())
@@ -1678,5 +1845,5 @@ int set_spi_clk(int periph_id, unsigned int rate)
 	if (cpu_is_exynos5())
 		return exynos5_set_spi_clk(periph_id, rate);
 	else
-		return 0;
+		return exynos4_set_spi_clk(periph_id, rate);
 }
