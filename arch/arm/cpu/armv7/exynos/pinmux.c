@@ -692,6 +692,35 @@ static int exynos5_pinmux_config(int peripheral, int flags)
 	return 0;
 }
 
+static void exynos4_spi_config(int peripheral)
+{
+	struct exynos4_gpio_part1 *gpio1 =
+		(struct exynos4_gpio_part1 *) samsung_get_base_gpio_part1();
+	struct s5p_gpio_bank *bank;
+	int start = 0, count = 0;
+	int i, cfg;
+
+	switch (peripheral) {
+	case PERIPH_ID_SPI0:
+		bank = &gpio1->b;
+		start = 0;
+		count = 4;
+		cfg = GPIO_FUNC(0x2);
+		break;
+	case PERIPH_ID_SPI1:
+		bank = &gpio1->b;
+		start = 4;
+		count = 4;
+		cfg = GPIO_FUNC(0x2);
+		break;
+	default:
+		return;
+	}
+
+	for (i = start; i < start + count; i++)
+		s5p_gpio_cfg_pin(bank, i, cfg);
+}
+
 static void exynos4_input_config(int peripheral)
 {
 	struct exynos4_gpio_part2 *gpio2 =
@@ -726,6 +755,10 @@ static int exynos4_pinmux_config(int peripheral, int flags)
 	case PERIPH_ID_SDMMC2:
 	case PERIPH_ID_SDMMC3:
 		return exynos4_mmc_config(peripheral, flags);
+	case PERIPH_ID_SPI0:
+	case PERIPH_ID_SPI1:
+		exynos4_spi_config(peripheral);
+		break;
 	case PERIPH_ID_INPUT_X0_0:
 		exynos4_input_config(peripheral);
 		break;
