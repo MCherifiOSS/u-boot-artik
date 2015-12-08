@@ -171,10 +171,69 @@ void dram_init_banksize(void)
 							PHYS_SDRAM_8_SIZE);
 }
 
+#ifdef CONFIG_DRIVER_AX88796C_SPI
+static int artik5_ax88796c_gpio_reset(void)
+{
+	struct exynos3_gpio_part2 *gpio2 =
+		(struct exynos3_gpio_part2 *) samsung_get_base_gpio_part2();
+	struct s5p_gpio_bank *bank;
+
+	/* set reset */
+	bank = &gpio2->e0;
+	s5p_gpio_direction_output(bank, 2, 0);
+	mdelay(10);
+	s5p_gpio_direction_output(bank, 2, 1);
+	mdelay(10);
+
+	return 0;
+}
+
+#define CS_HIGH (0) /* 0: low active, 1: high active */
+
+int artik5_ax88796c_cs_activate(void)
+{
+	struct exynos3_gpio_part2 *gpio2 =
+		(struct exynos3_gpio_part2 *) samsung_get_base_gpio_part2();
+	struct s5p_gpio_bank *bank;
+
+	bank = &gpio2->x3;
+	s5p_gpio_direction_output(bank, 4, CS_HIGH ? 1 : 0);
+
+	return 0;
+}
+
+int artik5_ax88796c_cs_deactivate(void)
+{
+	struct exynos3_gpio_part2 *gpio2 =
+		(struct exynos3_gpio_part2 *) samsung_get_base_gpio_part2();
+	struct s5p_gpio_bank *bank;
+
+	bank = &gpio2->x3;
+	s5p_gpio_direction_output(bank, 4, CS_HIGH ? 0 : 1);
+
+	return 0;
+}
+
+int board_eth_init(bd_t *bis)
+{
+	int rc = 0;
+	int num = 0;
+
+	artik5_ax88796c_gpio_reset();
+
+	rc = ax88796c_spi_initialize(AX88796C_SPI_BUS, AX88796C_SPI_CS,
+		AX88796C_MAX_HZ, AX88796C_SPI_MODE);
+	if (!rc)
+		num++;
+
+	return num;
+}
+#else	/* CONFIG_DRIVER_AX88796C_SPI */
 int board_eth_init(bd_t *bis)
 {
 	return 0;
 }
+#endif	/* CONFIG_DRIVER_AX88796C_SPI */
 
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)

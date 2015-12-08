@@ -310,6 +310,9 @@ int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 	return spi_get_bus(bus) && cs == 0;
 }
 
+extern int artik5_ax88796c_cs_activate(void);
+extern int artik5_ax88796c_cs_deactivate(void);
+
 /**
  * Activate the CS by driving it LOW
  *
@@ -319,6 +322,10 @@ int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 void spi_cs_activate(struct spi_slave *slave)
 {
 	struct exynos_spi_slave *spi_slave = to_exynos_spi(slave);
+
+#ifdef CONFIG_MACH_ARTIK5
+	artik5_ax88796c_cs_activate();
+#endif
 
 	clrbits_le32(&spi_slave->regs->cs_reg, SPI_SLAVE_SIG_INACT);
 	debug("Activate CS, bus %d\n", spi_slave->slave.bus);
@@ -334,6 +341,9 @@ void spi_cs_deactivate(struct spi_slave *slave)
 {
 	struct exynos_spi_slave *spi_slave = to_exynos_spi(slave);
 
+#ifdef CONFIG_MACH_ARTIK5
+	artik5_ax88796c_cs_deactivate();
+#endif
 	setbits_le32(&spi_slave->regs->cs_reg, SPI_SLAVE_SIG_INACT);
 	debug("Deactivate CS, bus %d\n", spi_slave->slave.bus);
 }
