@@ -505,7 +505,9 @@ int board_late_init(void)
 	rst_stat = readl(&pmu->rst_stat);
 	printf("rst_stat : 0x%x\n", rst_stat);
 
+#if 0
 	pressed_key = check_key();
+#endif
 	switch(pressed_key) {
 	case 0x1:
 		if ((om_status >> 1) == OM_1stSDMMC_2ndUSB) {
