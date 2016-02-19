@@ -194,6 +194,10 @@
 /* Command definition*/
 #include <config_cmd_default.h>
 
+#define CONFIG_CMD_NET
+#define CONFIG_CMD_DHCP
+#define CONFIG_CMD_GEN_ETHADDR
+
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_MMC
@@ -291,6 +295,9 @@
 	"sdrecovery=sdfuse format; sdfuse flashall 3\0"			\
 	"factory_load=factory_info load mmc ${emmc_dev} 0x80 0x8\0"	\
 	"factory_save=factory_info save mmc ${emmc_dev} 0x80 0x8\0"	\
+	"factory_set_ethaddr=run factory_load; gen_eth_addr ;"		\
+		"factory_info write ethaddr $ethaddr;"			\
+		"run factory_save\0"					\
 	"boot_cmd=fatload mmc 0:1 $kernel_addr $kernel_file;"		\
 		"fatload mmc 0:1 $fdtaddr $fdtfile;"			\
 		"bootz $kernel_addr - $fdtaddr\0"			\
