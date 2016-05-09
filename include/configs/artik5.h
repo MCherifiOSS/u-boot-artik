@@ -93,7 +93,7 @@
 #define SECCOND_BOOT_INFORM_OFFSET              0x00000028
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_PROMPT		"ARITK5 # "
+#define CONFIG_SYS_PROMPT		"ARTIK5 # "
 #define CONFIG_DEFAULT_CONSOLE		"console=ttySAC2,115200n8\0"
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_SYS_TEXT_BASE
 
